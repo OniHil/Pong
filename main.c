@@ -16,6 +16,7 @@ float cos[N_ANGLES];
 #define PADDLE_WIDTH_DEG 10
 #define PADDLE_THICKNESS 10
 #define PADDLE_DIST_FROM_MIDDLE 200
+#define PADDLE_MOVEMENT_SPEED 1
 Point base_paddle[2];
 
 #define C_WHITE -1
@@ -77,9 +78,6 @@ Game init()
         .ball_pos = {0, 0},
         .ball_vel = {1, 0}};
 
-    // Draw game outside circle
-    // midpoint circle algo
-
     return game;
 }
 
@@ -89,9 +87,63 @@ void tick()
     // Wait interrupt
 }
 
+void draw_game_circle()
+{
+    // midpoint circle algo
+}
+
+void draw_paddle(Paddle paddle)
+{
+    // Bresenham's line algo https://en.wikipedia.org/wiki/Bresenham's_line_algorithm
+    int x0 = paddle.ends[0].x;
+    int y0 = paddle.ends[0].y;
+    int x1 = paddle.ends[1].x;
+    int y1 = paddle.ends[1].y;
+
+    int dx = x1 - x0;
+    int nx = dx >> 31;
+    dx = (dx + nx) ^ nx;
+
+    int dy = y1 - y0;
+    int ny = dy >> 31;
+    dy = -((dy + ny) ^ ny);
+
+    int err = dx + dy;
+
+    int sx = x0 < x1 ? 1 : -1;
+    int sy = y0 < y1 ? 1 : -1;
+
+    int total_steps = (dx > -dy) ? dx : -dy;
+
+    for (int i = 0; i <= total_steps; i++)
+    {
+        // plot(x0, y0)
+
+        int e2 = err << 1;
+        int move_x = e2 >= dy;
+        int move_y = e2 <= dx;
+
+        err += dy * move_x + dx * move_y;
+        x0 += sx * move_x;
+        y0 += sy * move_y;
+    }
+}
+
+void draw_ball(Point pos)
+{
+}
+
+void draw_score(int score[2])
+{
+}
+
 void draw_screen(Game game)
 {
-    // Bresenham's line algo
+    draw_game_circle();
+    draw_paddle(game.p_one);
+    draw_paddle(game.p_two);
+    draw_ball(game.ball_pos);
+    draw_score(game.score);
 }
 
 int get_switches(void)
@@ -106,8 +158,8 @@ void move_paddles(Game game)
     int sw0 = switches & 1;
     int sw9 = switches & 0x100;
 
-    sw0 = sw0 | (-1 & ~sw0);
-    sw9 = sw9 | (-1 & ~sw9);
+    sw0 = (PADDLE_MOVEMENT_SPEED & sw0) | (-PADDLE_MOVEMENT_SPEED & ~sw0);
+    sw9 = (PADDLE_MOVEMENT_SPEED & sw9) | (-PADDLE_MOVEMENT_SPEED & ~sw9);
 
     game.p_one.angle += sw0;
     game.p_two.angle += sw9;
@@ -145,4 +197,6 @@ int main()
         move_ball(state);
         check_collision(state);
     }
+
+    return 0;
 }
