@@ -87,6 +87,12 @@ void tick()
     // Wait interrupt
 }
 
+void draw(int x, int y, int color)
+{
+    volatile char *VGA = (volatile char *)0x08000000;
+    VGA[x + y * SCREEN_WIDTH] = color;
+}
+
 void draw_game_circle()
 {
     // midpoint circle algo
@@ -117,7 +123,7 @@ void draw_paddle(Paddle paddle)
 
     for (int i = 0; i <= total_steps; i++)
     {
-        // plot(x0, y0)
+        draw(x0, y0, paddle.color);
 
         int e2 = err << 1;
         int move_x = e2 >= dy;
