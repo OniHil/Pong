@@ -176,13 +176,66 @@ void move_ball(Game game)
     game.ball_pos.y += game.ball_vel.y;
 }
 
-void check_collision(Game game)
+bool handle_paddle_collision(Game game, Paddle player)
 {
-    int dx = game.p_one.ends[0].x - game.p_one.ends[1].x;
-    int dy = game.p_one.ends[0].y - game.p_one.ends[1].y;
+    int px1 = player.ends[0].x;
+    int py1 = player.ends[0].y;
+    int px2 = player.ends[1].x;
+    int py2 = player.ends[1].y;
 
-    int fx = game.ball_pos.x - game.p_one.ends[0].x;
-    int fy = game.ball_pos.y - game.p_one.ends[0].y;
+    // Vector from paddle end to ball
+    int ax = game.ball_pos.x - px1;
+    int ay = game.ball_pos.y - py1;   
+    
+    int bx = px2 - px1;
+    int by = py2 - py1;
+
+    // Project a on b to find nearest point to ball
+    float k = (float)(ax * bx + ay * by) / (bx * bx + by * by);
+
+    float nearestx = px1 + k * bx;
+    float nearesty = py1 + k * by;
+
+    float vx = bx - nearestx;
+    float vy = by - nearesty;
+    float dist = vx * vx + vy * vy;
+    
+    // Collision detected if nearest point is within ball radius and on paddle
+    if (dist <= BALL_RADIUS * BALL_RADIUS && k <= 1 && k >= 0) {
+        // Update ball trajectory by projecting the velocity of the ball onto
+        // the normal of the paddle and subtracting the resulting vector twice
+        float nx = -cos[player.angle];
+        float ny = -sin[player.angle];
+
+        int velx = game.ball_vel.x;
+        int vely = game.ball_vel.y;
+
+        float c = velx * nx + vely * ny;
+        game.ball_vel.x = velx - 2 * c * nx;
+        game.ball_vel.y = vely - 2 * c * ny;
+
+        return true;
+    }
+
+    return false;
+}
+
+bool handle_oob_collision(Game game) {
+    int bx = game.ball_pos.x - SCREEN_WIDTH / 2;
+    int by = game.ball_pos.y - SCREEN_HEIGHT / 2;
+    
+    if (bx * bx + by * by >= pow(PADDLE_RADIUS - BALL_RADIUS, 2)) {
+        game.ball_pos.x = 0;
+        game.ball_pos.y = 0;
+
+        return true;
+    }
+}
+
+void handle_collisions(Game game) {
+    handle_paddle_collision(game, game.p_one);
+    handle_paddle_collision(game, game.p_two);
+    handle_oob_collision(game);
 }
 
 int main()
@@ -195,7 +248,7 @@ int main()
         tick();
         move_paddles(state);
         move_ball(state);
-        check_collision(state);
+        handle_collisions(state);
     }
 
     return 0;
