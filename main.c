@@ -19,6 +19,7 @@ float cos[N_ANGLES];
 #define PADDLE_MOVEMENT_SPEED 1
 Point base_paddle[2];
 
+#define C_BLACK 0
 #define C_WHITE -1
 #define C_GRAY 0b00100101
 
@@ -87,6 +88,12 @@ void tick()
     // Wait interrupt
 }
 
+void draw(int x, int y, int color)
+{
+    volatile char *VGA = (volatile char *)0x08000000;
+    VGA[x + y * SCREEN_WIDTH] = color;
+}
+
 void draw_game_circle()
 {
     // midpoint circle algo
@@ -117,7 +124,7 @@ void draw_paddle(Paddle paddle)
 
     for (int i = 0; i <= total_steps; i++)
     {
-        // plot(x0, y0)
+        draw(x0, y0, paddle.color);
 
         int e2 = err << 1;
         int move_x = e2 >= dy;
@@ -242,10 +249,20 @@ int main()
 {
     Game state = init();
 
+    draw_screen(state);
     while (1)
     {
-        draw_screen(state);
+        // Wait and draw new state
         tick();
+        draw_screen(state);
+
+        // Reset drawings
+        state.p_one.color = C_BLACK;
+        state.p_two.color = C_BLACK;
+        draw_paddle(state.p_one);
+        draw_paddle(state.p_two);
+
+        // Calculate new state
         move_paddles(state);
         move_ball(state);
         handle_collisions(state);
