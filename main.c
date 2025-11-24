@@ -94,11 +94,6 @@ void draw(int x, int y, int color)
     VGA[x + y * SCREEN_WIDTH] = color;
 }
 
-void draw_game_circle()
-{
-    // midpoint circle algo
-}
-
 void draw_paddle(Paddle paddle)
 {
     // Bresenham's line algo https://en.wikipedia.org/wiki/Bresenham's_line_algorithm
@@ -136,8 +131,32 @@ void draw_paddle(Paddle paddle)
     }
 }
 
-void draw_ball(Point pos)
+void draw_circle(int x, int y, int radius, int color)
 {
+    //Jesko's method variant of midpoint circle algorithm
+    int t1 = r / 16;
+    int t2 = 0;
+    int dx = radius;
+    int dy = 0;
+
+    while(dx => dy) {
+        draw(x + dx, y + dy, color);
+        draw(x - dx, y + dy, color);
+        draw(x + dx, y - dy, color);
+        draw(x - dx, y - dy, color);
+        draw(y + dy, x + dx, color);
+        draw(y - dy, x + dx, color);
+        draw(y + dy, x - dx, color);
+        draw(y - dy, x - dx, color);
+
+        dy++;
+        t1 = t1 + dy;
+        t2 = t1 - dx;
+        if (t2 >= 0) {
+            t1 = t2;
+            dx++;
+        }
+    }
 }
 
 void draw_score(int score[2])
@@ -146,10 +165,10 @@ void draw_score(int score[2])
 
 void draw_screen(Game game)
 {
-    draw_game_circle();
+    draw_circle(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, PADDLE_RADIUS, C_WHITE);
     draw_paddle(game.p_one);
     draw_paddle(game.p_two);
-    draw_ball(game.ball_pos);
+    draw_circle(game.ball_pos.x, game.ball_pos.y, BALL_RADIUS, C_WHITE);
     draw_score(game.score);
 }
 
