@@ -247,22 +247,23 @@ bool handle_paddle_collision(Game game, Paddle player)
     return false;
 }
 
-bool handle_oob_collision(Game game) {
-    int bx = game.ball_pos.x - SCREEN_WIDTH / 2;
-    int by = game.ball_pos.y - SCREEN_HEIGHT / 2;
+bool handle_oob_collision(Game* game) {
+    int bx = game->ball_pos.x - SCREEN_WIDTH / 2;
+    int by = game->ball_pos.y - SCREEN_HEIGHT / 2;
     
     if (bx * bx + by * by >= (PADDLE_RADIUS - BALL_RADIUS) * (PADDLE_RADIUS - BALL_RADIUS)) {
-        game.ball_pos.x = SCREEN_WIDTH / 2;
-        game.ball_pos.y = SCREEN_HEIGHT / 2;
+        game->ball_pos.x = SCREEN_WIDTH / 2;
+        game->ball_pos.y = SCREEN_HEIGHT / 2;
+        game->ball_vel.y += 1;
 
         return true;
     }
     return false;
 }
 
-void handle_collisions(Game game) {
-    handle_paddle_collision(game, game.p_one);
-    handle_paddle_collision(game, game.p_two);
+void handle_collisions(Game* game) {
+    //handle_paddle_collision(game, game.p_one);
+    //handle_paddle_collision(game, game.p_two);
     handle_oob_collision(game);
 }
 
@@ -286,7 +287,7 @@ int main()
         // Calculate new state
         move_paddles(state);
         move_ball(&state);
-        handle_collisions(state);
+        handle_collisions(&state);
     }
 
     return 0;
