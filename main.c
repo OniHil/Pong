@@ -10,14 +10,15 @@ extern float cos[360];
 #define BALL_RADIUS 2
 
 #define PADDLE_RADIUS SCREEN_HEIGHT / 2 - 5
-#define PADDLE_WIDTH_DEG 10
+#define PADDLE_WIDTH_DEG 30
 #define PADDLE_THICKNESS 10
-#define PADDLE_DIST_FROM_MIDDLE 100
+#define PADDLE_DIST_FROM_MIDDLE 110
 #define PADDLE_MOVEMENT_SPEED 1
 
 #define C_BLACK 0
 #define C_WHITE -1
 #define C_GRAY 0b00100101
+#define C_RED 0b11100000
 
 typedef struct
 {
@@ -48,29 +49,26 @@ typedef struct
 
 Game init()
 {
-    // base_paddle[0].x = 100;
-    // base_paddle[0].y = 100;
-    // base_paddle[1].x = 200;
-    // base_paddle[1].y = 200;
-
-    base_paddle[0].x = SCREEN_WIDTH / 2 + PADDLE_DIST_FROM_MIDDLE * cos[PADDLE_WIDTH_DEG / 2],
-    base_paddle[0].y = SCREEN_HEIGHT / 2 + PADDLE_DIST_FROM_MIDDLE * sin[PADDLE_WIDTH_DEG / 2];
-    base_paddle[1].x = SCREEN_WIDTH / 2 + PADDLE_DIST_FROM_MIDDLE * cos[PADDLE_WIDTH_DEG / 2],
-    base_paddle[1].y = SCREEN_HEIGHT / 2 + PADDLE_DIST_FROM_MIDDLE * -sin[PADDLE_WIDTH_DEG / 2];
+    base_paddle[0].x = PADDLE_RADIUS * cos[PADDLE_WIDTH_DEG / 2],
+    base_paddle[0].y = PADDLE_RADIUS * sin[PADDLE_WIDTH_DEG / 2];
+    base_paddle[1].x = PADDLE_RADIUS * cos[PADDLE_WIDTH_DEG / 2],
+    base_paddle[1].y = PADDLE_RADIUS * -sin[PADDLE_WIDTH_DEG / 2];
 
     Paddle p1;
     p1.angle = 0;
     p1.color = C_WHITE;
-    p1.ends[0] = base_paddle[0];
-    p1.ends[1] = base_paddle[1];
+    p1.ends[0].x = (PADDLE_RADIUS) * cos[PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
+    p1.ends[0].y = (PADDLE_RADIUS) * sin[PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
+    p1.ends[1].x = (PADDLE_RADIUS) * cos[PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
+    p1.ends[1].y = (PADDLE_RADIUS) * sin[PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
     
     Paddle p2;
     p2.angle = 180;
-    p2.color = C_GRAY;
-    p2.ends[0].x = -base_paddle[0].x;
-    p2.ends[0].y = -base_paddle[0].y;
-    p2.ends[1].x = -base_paddle[1].x;
-    p2.ends[1].y = -base_paddle[1].y;
+    p2.color = C_RED;
+    p2.ends[0].x = base_paddle[0].x * cos[p2.angle] + SCREEN_WIDTH / 2,
+    p2.ends[0].y = base_paddle[0].y * sin[p2.angle] + SCREEN_HEIGHT / 2;
+    p2.ends[1].x = base_paddle[1].x * cos[p2.angle] + SCREEN_WIDTH / 2,
+    p2.ends[1].y = base_paddle[1].y * sin[p2.angle] + SCREEN_HEIGHT / 2;
     
     Game game;
     
@@ -184,22 +182,36 @@ int get_switches(void)
     return *p & 0b1111111111;
 }
 
-void move_paddles(Game game)
+void move_paddles(Game* game)
 {
-    int switches = get_switches();
-    int sw0 = switches & 1;
-    int sw9 = switches & 0x100;
+    // int switches = get_switches();
+    // int sw0 = switches & 1;
+    // int sw9 = switches & 0x100;
 
-    sw0 = (PADDLE_MOVEMENT_SPEED & sw0) | (-PADDLE_MOVEMENT_SPEED & ~sw0);
-    sw9 = (PADDLE_MOVEMENT_SPEED & sw9) | (-PADDLE_MOVEMENT_SPEED & ~sw9);
+    // sw0 = (PADDLE_MOVEMENT_SPEED & sw0) | (-PADDLE_MOVEMENT_SPEED & ~sw0);
+    // sw9 = (PADDLE_MOVEMENT_SPEED & sw9) | (-PADDLE_MOVEMENT_SPEED & ~sw9);
 
-    game.p_one.angle += sw0;
-    game.p_two.angle += sw9;
+    
+    // game->p_one.angle += sw0;
+    // game->p_two.angle += sw9;
+    // game->p_two.angle %= 360;
+    
+    game->p_one.angle += 1;
+    int deg_one = game->p_one.angle + PADDLE_WIDTH_DEG / 2;
+    int deg_two = game->p_one.angle - PADDLE_WIDTH_DEG / 2;
+    deg_one %= 360;
+    deg_two %= 360;
 
-    game.p_one.ends[0].x = PADDLE_DIST_FROM_MIDDLE * cos[game.p_one.angle + PADDLE_WIDTH_DEG / 2];
-    game.p_one.ends[0].y = PADDLE_DIST_FROM_MIDDLE * sin[game.p_one.angle + PADDLE_WIDTH_DEG / 2];
-    game.p_one.ends[1].x = PADDLE_DIST_FROM_MIDDLE * cos[game.p_one.angle - PADDLE_WIDTH_DEG / 2];
-    game.p_one.ends[1].y = PADDLE_DIST_FROM_MIDDLE * sin[game.p_one.angle - PADDLE_WIDTH_DEG / 2];
+
+    game->p_one.ends[0].x = (PADDLE_RADIUS) * cos[deg_one] + (SCREEN_WIDTH) / 2;
+    game->p_one.ends[0].y = (PADDLE_RADIUS) * sin[deg_one] + (SCREEN_HEIGHT) / 2;
+    game->p_one.ends[1].x = (PADDLE_RADIUS) * cos[deg_two] + (SCREEN_WIDTH) / 2;
+    game->p_one.ends[1].y = (PADDLE_RADIUS) * sin[deg_two] + (SCREEN_HEIGHT) / 2;
+    
+    // game->p_two.ends[0].x = PADDLE_RADIUS * cos[game->p_two.angle + PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
+    // game->p_two.ends[0].y = PADDLE_RADIUS * sin[game->p_two.angle + PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
+    // game->p_two.ends[1].x = PADDLE_RADIUS * cos[game->p_two.angle - PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
+    // game->p_two.ends[1].y = PADDLE_RADIUS * sin[game->p_two.angle - PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
 }
 
 void move_ball(Game* game)
@@ -223,17 +235,17 @@ bool handle_paddle_collision(Game* game, Paddle player)
     int by = py2 - py1;
 
     // Project a on b to find nearest point to ball
-    float k = (float)(ax * bx + ay * by) / (bx * bx + by * by);
+    float k = (ax * bx + ay * by) / (float) (bx * bx + by * by);
 
     float nearestx = (float) px1 + k * (float) bx;
     float nearesty = (float) py1 + k * (float) by;
 
-    float vx = bx - nearestx;
-    float vy = by - nearesty;
+    float vx = game->ball_pos.x - nearestx;
+    float vy = game->ball_pos.y - nearesty;
     float dist = vx * vx + vy * vy;
     
     // Collision detected if nearest point is within ball radius and on paddle
-    if (dist <= (float) BALL_RADIUS * (float) BALL_RADIUS && k <= 1 && k >= 0) {
+    if (dist <= BALL_RADIUS * BALL_RADIUS && k >= 0 && k <= 1) {
         // Update ball trajectory by projecting the velocity of the ball onto
         // the normal of the paddle and subtracting the resulting vector twice
         float nx = -cos[player.angle];
@@ -290,7 +302,7 @@ int main()
         // draw_paddle(state.p_two);
 
         // Calculate new state
-        move_paddles(state);
+        move_paddles(&state);
         move_ball(&state);
         handle_collisions(&state);
     }
