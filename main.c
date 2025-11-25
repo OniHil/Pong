@@ -12,7 +12,7 @@ extern float cos[360];
 #define PADDLE_RADIUS SCREEN_HEIGHT / 2 - 5
 #define PADDLE_WIDTH_DEG 10
 #define PADDLE_THICKNESS 10
-#define PADDLE_DIST_FROM_MIDDLE 50
+#define PADDLE_DIST_FROM_MIDDLE 100
 #define PADDLE_MOVEMENT_SPEED 1
 
 #define C_BLACK 0
@@ -48,10 +48,15 @@ typedef struct
 
 Game init()
 {
-    base_paddle[0].x = PADDLE_DIST_FROM_MIDDLE * cos[PADDLE_WIDTH_DEG / 2],
-    base_paddle[0].y = PADDLE_DIST_FROM_MIDDLE * sin[PADDLE_WIDTH_DEG / 2];
-    base_paddle[1].x = PADDLE_DIST_FROM_MIDDLE * cos[PADDLE_WIDTH_DEG / 2],
-    base_paddle[1].y = PADDLE_DIST_FROM_MIDDLE * -sin[PADDLE_WIDTH_DEG / 2];
+    // base_paddle[0].x = 100;
+    // base_paddle[0].y = 100;
+    // base_paddle[1].x = 200;
+    // base_paddle[1].y = 200;
+
+    base_paddle[0].x = SCREEN_WIDTH / 2 + PADDLE_DIST_FROM_MIDDLE * cos[PADDLE_WIDTH_DEG / 2],
+    base_paddle[0].y = SCREEN_HEIGHT / 2 + PADDLE_DIST_FROM_MIDDLE * sin[PADDLE_WIDTH_DEG / 2];
+    base_paddle[1].x = SCREEN_WIDTH / 2 + PADDLE_DIST_FROM_MIDDLE * cos[PADDLE_WIDTH_DEG / 2],
+    base_paddle[1].y = SCREEN_HEIGHT / 2 + PADDLE_DIST_FROM_MIDDLE * -sin[PADDLE_WIDTH_DEG / 2];
 
     Paddle p1;
     p1.angle = 0;
@@ -203,7 +208,7 @@ void move_ball(Game* game)
     game->ball_pos.y += game->ball_vel.y;
 }
 
-bool handle_paddle_collision(Game game, Paddle player)
+bool handle_paddle_collision(Game* game, Paddle player)
 {
     int px1 = player.ends[0].x;
     int py1 = player.ends[0].y;
@@ -211,8 +216,8 @@ bool handle_paddle_collision(Game game, Paddle player)
     int py2 = player.ends[1].y;
 
     // Vector from paddle end to ball
-    int ax = game.ball_pos.x - px1;
-    int ay = game.ball_pos.y - py1;   
+    int ax = game->ball_pos.x - px1;
+    int ay = game->ball_pos.y - py1;   
     
     int bx = px2 - px1;
     int by = py2 - py1;
@@ -220,26 +225,26 @@ bool handle_paddle_collision(Game game, Paddle player)
     // Project a on b to find nearest point to ball
     float k = (float)(ax * bx + ay * by) / (bx * bx + by * by);
 
-    float nearestx = px1 + k * bx;
-    float nearesty = py1 + k * by;
+    float nearestx = (float) px1 + k * (float) bx;
+    float nearesty = (float) py1 + k * (float) by;
 
     float vx = bx - nearestx;
     float vy = by - nearesty;
     float dist = vx * vx + vy * vy;
     
     // Collision detected if nearest point is within ball radius and on paddle
-    if (dist <= BALL_RADIUS * BALL_RADIUS && k <= 1 && k >= 0) {
+    if (dist <= (float) BALL_RADIUS * (float) BALL_RADIUS && k <= 1 && k >= 0) {
         // Update ball trajectory by projecting the velocity of the ball onto
         // the normal of the paddle and subtracting the resulting vector twice
         float nx = -cos[player.angle];
         float ny = -sin[player.angle];
 
-        int velx = game.ball_vel.x;
-        int vely = game.ball_vel.y;
+        int velx = game->ball_vel.x;
+        int vely = game->ball_vel.y;
 
-        float c = velx * nx + vely * ny;
-        game.ball_vel.x = velx - 2 * c * nx;
-        game.ball_vel.y = vely - 2 * c * ny;
+        float c = (float) velx * nx + (float) vely * ny;
+        game->ball_vel.x = velx - 2 * c * nx;
+        game->ball_vel.y = vely - 2 * c * ny;
 
         return true;
     }
@@ -254,7 +259,6 @@ bool handle_oob_collision(Game* game) {
     if (bx * bx + by * by >= (PADDLE_RADIUS - BALL_RADIUS) * (PADDLE_RADIUS - BALL_RADIUS)) {
         game->ball_pos.x = SCREEN_WIDTH / 2;
         game->ball_pos.y = SCREEN_HEIGHT / 2;
-        game->ball_vel.y += 1;
 
         return true;
     }
@@ -262,8 +266,8 @@ bool handle_oob_collision(Game* game) {
 }
 
 void handle_collisions(Game* game) {
-    //handle_paddle_collision(game, game.p_one);
-    //handle_paddle_collision(game, game.p_two);
+    handle_paddle_collision(game, game->p_one);
+    handle_paddle_collision(game, game->p_two);
     handle_oob_collision(game);
 }
 
@@ -279,10 +283,11 @@ int main()
         draw_screen(state);
 
         // Reset drawings
-        state.p_one.color = C_BLACK;
-        state.p_two.color = C_BLACK;
-        draw_paddle(state.p_one);
-        draw_paddle(state.p_two);
+        // draw_circle(state.ball_pos.x, state.ball_pos.y, BALL_RADIUS, C_BLACK);
+        // state.p_one.color = C_BLACK;
+        // state.p_two.color = C_BLACK;
+        // draw_paddle(state.p_one);
+        // draw_paddle(state.p_two);
 
         // Calculate new state
         move_paddles(state);
