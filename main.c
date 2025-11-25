@@ -1,14 +1,11 @@
-#define _GNU_SOURCE
-#include <math.h>
+#include <stdbool.h>
+extern float sin[360];
+extern float cos[360];
 
 #define TICKS_PER_SEC 20
 
-#define N_ANGLES 360
-float sin[N_ANGLES];
-float cos[N_ANGLES];
-
-#define SCREEN_WIDTH 240
-#define SCREEN_HEIGHT 320
+#define SCREEN_WIDTH 320
+#define SCREEN_HEIGHT 240
 
 #define BALL_RADIUS 10
 
@@ -17,7 +14,6 @@ float cos[N_ANGLES];
 #define PADDLE_THICKNESS 10
 #define PADDLE_DIST_FROM_MIDDLE 200
 #define PADDLE_MOVEMENT_SPEED 1
-Point base_paddle[2];
 
 #define C_BLACK 0
 #define C_WHITE -1
@@ -28,6 +24,8 @@ typedef struct
     int x;
     int y;
 } Point;
+
+Point base_paddle[2];
 
 typedef struct
 {
@@ -50,34 +48,37 @@ typedef struct
 
 Game init()
 {
-    for (int i = 0; i < N_ANGLES; i++)
-    {
-        float radians = i * (M_PIf / 180.0);
-        sin[i] = sinf(radians);
-        cos[i] = cosf(radians);
-    }
+    base_paddle[0].x = PADDLE_DIST_FROM_MIDDLE * cos[PADDLE_WIDTH_DEG / 2],
+    base_paddle[0].y = PADDLE_DIST_FROM_MIDDLE * sin[PADDLE_WIDTH_DEG / 2];
+    base_paddle[1].x = PADDLE_DIST_FROM_MIDDLE * cos[PADDLE_WIDTH_DEG / 2],
+    base_paddle[1].y = PADDLE_DIST_FROM_MIDDLE * -sin[PADDLE_WIDTH_DEG / 2];
 
-    base_paddle[0] = (Point){
-        .x = PADDLE_DIST_FROM_MIDDLE * cos[PADDLE_WIDTH_DEG / 2],
-        .y = PADDLE_DIST_FROM_MIDDLE * sin[PADDLE_WIDTH_DEG / 2]};
-    base_paddle[1] = (Point){
-        .x = PADDLE_DIST_FROM_MIDDLE * cos[PADDLE_WIDTH_DEG / 2],
-        .y = PADDLE_DIST_FROM_MIDDLE * -sin[PADDLE_WIDTH_DEG / 2]};
+    Paddle p1;
+    p1.angle = 0;
+    p1.color = C_WHITE;
+    p1.ends[0] = base_paddle[0];
+    p1.ends[1] = base_paddle[1];
+    
+    Paddle p2;
+    p2.angle = 180;
+    p2.color = C_GRAY;
+    p2.ends[0].x = -base_paddle[0].x;
+    p2.ends[0].y = -base_paddle[0].y;
+    p2.ends[1].x = -base_paddle[1].x;
+    p2.ends[1].y = -base_paddle[1].y;
+    
+    Game game;
+    
+    game.score[0] = 0;
+    game.score[1] = 0;
+    
+    game.ball_pos.x = 0;
+    game.ball_pos.y = 0;
+    game.ball_vel.x = 1;
+    game.ball_vel.y = 0;
 
-    Paddle p1 = {
-        .angle = 0,
-        .color = C_WHITE,
-        .ends = {base_paddle[0], base_paddle[1]}};
-    Paddle p2 = {
-        .angle = 180,
-        .color = C_GRAY,
-        .ends = {(Point){.x = -base_paddle[0].x, .y = -base_paddle[0].y},
-                 (Point){.x = -base_paddle[1].x, .y = -base_paddle[1].y}}};
-
-    Game game = {
-        .score = {0, 0},
-        .ball_pos = {0, 0},
-        .ball_vel = {1, 0}};
+    game.p_one = p1;
+    game.p_two = p2;
 
     return game;
 }
@@ -134,12 +135,12 @@ void draw_paddle(Paddle paddle)
 void draw_circle(int x, int y, int radius, int color)
 {
     //Jesko's method variant of midpoint circle algorithm
-    int t1 = r / 16;
+    int t1 = radius / 16;
     int t2 = 0;
     int dx = radius;
     int dy = 0;
 
-    while(dx => dy) {
+    while(dx >= dy) {
         draw(x + dx, y + dy, color);
         draw(x - dx, y + dy, color);
         draw(x + dx, y - dy, color);
@@ -174,7 +175,7 @@ void draw_screen(Game game)
 
 int get_switches(void)
 {
-    volatile int *p = (int *)0x04000010;
+    volatile int *p = (int *)0x08000000;
     return *p & 0b1111111111;
 }
 
@@ -250,12 +251,13 @@ bool handle_oob_collision(Game game) {
     int bx = game.ball_pos.x - SCREEN_WIDTH / 2;
     int by = game.ball_pos.y - SCREEN_HEIGHT / 2;
     
-    if (bx * bx + by * by >= pow(PADDLE_RADIUS - BALL_RADIUS, 2)) {
+    if (bx * bx + by * by >= (PADDLE_RADIUS - BALL_RADIUS) * (PADDLE_RADIUS - BALL_RADIUS)) {
         game.ball_pos.x = 0;
         game.ball_pos.y = 0;
 
         return true;
     }
+    return false;
 }
 
 void handle_collisions(Game game) {
