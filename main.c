@@ -59,17 +59,17 @@ Game init()
     p1.color = C_WHITE;
     p1.ends[0].x = (PADDLE_RADIUS) * cos[PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
     p1.ends[0].y = (PADDLE_RADIUS) * sin[PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
-    p1.ends[1].x = (PADDLE_RADIUS) * cos[PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
-    p1.ends[1].y = (PADDLE_RADIUS) * sin[PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
+    p1.ends[1].x = (PADDLE_RADIUS) * cos[360 - PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
+    p1.ends[1].y = (PADDLE_RADIUS) * sin[360 - PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
     
     Paddle p2;
     p2.angle = 180;
     p2.color = C_RED;
-    p2.ends[0].x = base_paddle[0].x * cos[p2.angle] + SCREEN_WIDTH / 2,
-    p2.ends[0].y = base_paddle[0].y * sin[p2.angle] + SCREEN_HEIGHT / 2;
-    p2.ends[1].x = base_paddle[1].x * cos[p2.angle] + SCREEN_WIDTH / 2,
-    p2.ends[1].y = base_paddle[1].y * sin[p2.angle] + SCREEN_HEIGHT / 2;
-    
+    p2.ends[0].x = (PADDLE_RADIUS) * cos[p2.angle + PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
+    p2.ends[0].y = (PADDLE_RADIUS) * sin[p2.angle + PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
+    p2.ends[1].x = (PADDLE_RADIUS) * cos[p2.angle - PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
+    p2.ends[1].y = (PADDLE_RADIUS) * sin[p2.angle - PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
+
     Game game;
     
     game.score[0] = 0;
@@ -178,40 +178,47 @@ void draw_screen(Game game)
 
 int get_switches(void)
 {
-    volatile int *p = (int *)0x08000000;
+    volatile int *p = (int *)0x04000010;
     return *p & 0b1111111111;
 }
 
 void move_paddles(Game* game)
 {
-    // int switches = get_switches();
-    // int sw0 = switches & 1;
-    // int sw9 = switches & 0x100;
+    int switches = get_switches();
+    int sw0 = switches & 1;
+    int sw9 = switches & 0x100;
+    sw9 = sw9 >> 8;
+
+    sw0 = sw0 ==0 ? -1 : 1;
+    sw9 = sw9 == 0 ? -1 : 1;
 
     // sw0 = (PADDLE_MOVEMENT_SPEED & sw0) | (-PADDLE_MOVEMENT_SPEED & ~sw0);
     // sw9 = (PADDLE_MOVEMENT_SPEED & sw9) | (-PADDLE_MOVEMENT_SPEED & ~sw9);
 
     
-    // game->p_one.angle += sw0;
-    // game->p_two.angle += sw9;
-    // game->p_two.angle %= 360;
+    game->p_one.angle += sw0 * PADDLE_MOVEMENT_SPEED;
+    game->p_one.angle %= 360;
     
-    game->p_one.angle += 1;
-    int deg_one = game->p_one.angle + PADDLE_WIDTH_DEG / 2;
-    int deg_two = game->p_one.angle - PADDLE_WIDTH_DEG / 2;
-    deg_one %= 360;
-    deg_two %= 360;
-
-
-    game->p_one.ends[0].x = (PADDLE_RADIUS) * cos[deg_one] + (SCREEN_WIDTH) / 2;
-    game->p_one.ends[0].y = (PADDLE_RADIUS) * sin[deg_one] + (SCREEN_HEIGHT) / 2;
-    game->p_one.ends[1].x = (PADDLE_RADIUS) * cos[deg_two] + (SCREEN_WIDTH) / 2;
-    game->p_one.ends[1].y = (PADDLE_RADIUS) * sin[deg_two] + (SCREEN_HEIGHT) / 2;
+    game->p_two.angle += sw9 * PADDLE_MOVEMENT_SPEED;
+    game->p_two.angle %= 360;
     
-    // game->p_two.ends[0].x = PADDLE_RADIUS * cos[game->p_two.angle + PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
-    // game->p_two.ends[0].y = PADDLE_RADIUS * sin[game->p_two.angle + PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
-    // game->p_two.ends[1].x = PADDLE_RADIUS * cos[game->p_two.angle - PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
-    // game->p_two.ends[1].y = PADDLE_RADIUS * sin[game->p_two.angle - PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
+    // game->p_one.angle += 1;
+    int p1d1 = ((game->p_one.angle + PADDLE_WIDTH_DEG / 2) % 360 + 360) % 360;
+    int p1d2 = ((game->p_one.angle - PADDLE_WIDTH_DEG / 2) % 360 + 360) % 360;
+
+    game->p_one.ends[0].x = (PADDLE_RADIUS) * cos[p1d1] + (SCREEN_WIDTH) / 2;
+    game->p_one.ends[0].y = (PADDLE_RADIUS) * sin[p1d1] + (SCREEN_HEIGHT) / 2;
+    game->p_one.ends[1].x = (PADDLE_RADIUS) * cos[p1d2] + (SCREEN_WIDTH) / 2;
+    game->p_one.ends[1].y = (PADDLE_RADIUS) * sin[p1d2] + (SCREEN_HEIGHT) / 2;
+    
+    // game->p_two.angle += 1;
+    int p2d1 = ((game->p_two.angle + PADDLE_WIDTH_DEG / 2) % 360 + 360) % 360;
+    int p2d2 = ((game->p_two.angle - PADDLE_WIDTH_DEG / 2) % 360 + 360) % 360;
+
+    game->p_two.ends[0].x = (PADDLE_RADIUS) * cos[p2d1] + (SCREEN_WIDTH) / 2;
+    game->p_two.ends[0].y = (PADDLE_RADIUS) * sin[p2d1] + (SCREEN_HEIGHT) / 2;
+    game->p_two.ends[1].x = (PADDLE_RADIUS) * cos[p2d2] + (SCREEN_WIDTH) / 2;
+    game->p_two.ends[1].y = (PADDLE_RADIUS) * sin[p2d2] + (SCREEN_HEIGHT) / 2;
 }
 
 void move_ball(Game* game)
