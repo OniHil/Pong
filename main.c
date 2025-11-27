@@ -12,17 +12,20 @@ extern float cos[360];
 #define SCREEN_HEIGHT 240
 
 #define BALL_RADIUS 2
+#define HIT_COOLDOWN 10
+#define BALL_SPEED 1
 
 #define PADDLE_RADIUS SCREEN_HEIGHT / 2 - 5
 #define PADDLE_WIDTH_DEG 30
 #define PADDLE_THICKNESS 10
 #define PADDLE_DIST_FROM_MIDDLE 110
-#define PADDLE_MOVEMENT_SPEED 1
+#define PADDLE_MOVEMENT_SPEED 2
 
 #define C_BLACK 0
 #define C_WHITE -1
 #define C_GRAY 0b00100101
 #define C_RED 0b11100000
+#define C_BLUE 0b00000111
 
 typedef struct
 {
@@ -49,6 +52,8 @@ typedef struct
     float ball_vel_x;
     float ball_vel_y;
 
+    int hit_cooldown;
+
     Paddle p_one;
     Paddle p_two;
 } Game;
@@ -71,7 +76,7 @@ Game init()
 
     Paddle p1;
     p1.angle = 0;
-    p1.color = C_WHITE;
+    p1.color = C_BLUE;
     p1.ends[0].x = (PADDLE_RADIUS) * cos[PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
     p1.ends[0].y = (PADDLE_RADIUS) * sin[PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
     p1.ends[1].x = (PADDLE_RADIUS) * cos[360 - PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
@@ -92,8 +97,10 @@ Game init()
     
     game.ball_pos_x = SCREEN_WIDTH / 2;
     game.ball_pos_y = SCREEN_HEIGHT / 2;
-    game.ball_vel_x = 1;
+    game.ball_vel_x = BALL_SPEED;
     game.ball_vel_y = 0;
+
+    game.hit_cooldown = HIT_COOLDOWN;
 
     game.p_one = p1;
     game.p_two = p2;
@@ -311,9 +318,15 @@ bool handle_oob_collision(Game* game) {
 }
 
 void handle_collisions(Game* game) {
-    handle_paddle_collision(game, game->p_one);
-    handle_paddle_collision(game, game->p_two);
+    if (game->hit_cooldown == 0) {
+        if (handle_paddle_collision(game, game->p_one) || handle_paddle_collision(game, game->p_two)) {
+            game->hit_cooldown = HIT_COOLDOWN;
+        } else {
     handle_oob_collision(game);
+}
+    } else {
+        game->hit_cooldown -= 1;
+    }
 }
 
 void handle_interrupt(unsigned cause) {
@@ -331,8 +344,6 @@ void handle_interrupt(unsigned cause) {
         //Draws next frame
         draw_screen(gamestate);
         
-        print("interrupt!");
-
         int* timer_p = (int*) 0x04000020;
         *timer_p = 0;
         break;
