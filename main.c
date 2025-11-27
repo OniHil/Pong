@@ -44,7 +44,8 @@ typedef struct
 {
     int score[2]; // 0: player one, 1: player two
 
-    Point ball_pos;
+    float ball_pos_x;
+    float ball_pos_y;
     float ball_vel_x;
     float ball_vel_y;
 
@@ -56,8 +57,8 @@ Game gamestate;
 
 void setup_timer() {
     int* timer_p = (int*) 0x04000020;
-    *(timer_p + 3) = 0x2D; // Periodh
-    *(timer_p + 2) = 0xC6C0; // Periodl
+    *(timer_p + 3) = 0xF; // Periodh
+    *(timer_p + 2) = 0x4240; // Periodl
     *(timer_p + 1) = 0x7;  // Control
 }
 
@@ -89,8 +90,8 @@ Game init()
     game.score[0] = 0;
     game.score[1] = 0;
     
-    game.ball_pos.x = SCREEN_WIDTH / 2;
-    game.ball_pos.y = SCREEN_HEIGHT / 2;
+    game.ball_pos_x = SCREEN_WIDTH / 2;
+    game.ball_pos_y = SCREEN_HEIGHT / 2;
     game.ball_vel_x = 1;
     game.ball_vel_y = 0;
 
@@ -189,7 +190,7 @@ void draw_screen(Game game)
     draw_circle(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, PADDLE_RADIUS, C_WHITE);
     draw_paddle(game.p_one);
     draw_paddle(game.p_two);
-    draw_circle(game.ball_pos.x, game.ball_pos.y, BALL_RADIUS, C_WHITE);
+    draw_circle(game.ball_pos_x, game.ball_pos_y, BALL_RADIUS, C_WHITE);
     // draw_score(game.score);
 }
 
@@ -248,32 +249,32 @@ void move_paddles(Game* game)
 
 void move_ball(Game* game)
 {
-    game->ball_pos.x += game->ball_vel_x;
-    game->ball_pos.y += game->ball_vel_y;
+    game->ball_pos_x += game->ball_vel_x;
+    game->ball_pos_y += game->ball_vel_y;
 }
 
 bool handle_paddle_collision(Game* game, Paddle player)
 {
-    int px1 = player.ends[0].x;
-    int py1 = player.ends[0].y;
-    int px2 = player.ends[1].x;
-    int py2 = player.ends[1].y;
+    float px1 = player.ends[0].x;
+    float py1 = player.ends[0].y;
+    float px2 = player.ends[1].x;
+    float py2 = player.ends[1].y;
 
     // Vector from paddle end to ball
-    int ax = game->ball_pos.x - px1;
-    int ay = game->ball_pos.y - py1;   
+    float ax = game->ball_pos_x - px1;
+    float ay = game->ball_pos_y - py1;   
     
-    int bx = px2 - px1;
-    int by = py2 - py1;
+    float bx = px2 - px1;
+    float by = py2 - py1;
 
     // Project a on b to find nearest point to ball
     float k = (ax * bx + ay * by) / (float) (bx * bx + by * by);
 
-    float nearestx = (float) px1 + k * (float) bx;
-    float nearesty = (float) py1 + k * (float) by;
+    float nearestx = px1 + k * bx;
+    float nearesty = py1 + k * by;
 
-    float vx = game->ball_pos.x - nearestx;
-    float vy = game->ball_pos.y - nearesty;
+    float vx = game->ball_pos_x - nearestx;
+    float vy = game->ball_pos_y - nearesty;
     float dist = vx * vx + vy * vy;
     
     // Collision detected if nearest point is within ball radius and on paddle
@@ -286,7 +287,7 @@ bool handle_paddle_collision(Game* game, Paddle player)
         float velx = game->ball_vel_x;
         float vely = game->ball_vel_y;
 
-        float c = (float) velx * nx + (float) vely * ny;
+        float c = velx * nx + vely * ny;
         game->ball_vel_x = velx - 2 * c * nx;
         game->ball_vel_y = vely - 2 * c * ny;
 
@@ -297,12 +298,12 @@ bool handle_paddle_collision(Game* game, Paddle player)
 }
 
 bool handle_oob_collision(Game* game) {
-    int bx = game->ball_pos.x - SCREEN_WIDTH / 2;
-    int by = game->ball_pos.y - SCREEN_HEIGHT / 2;
+    int bx = game->ball_pos_x - SCREEN_WIDTH / 2;
+    int by = game->ball_pos_y - SCREEN_HEIGHT / 2;
     
     if (bx * bx + by * by >= (PADDLE_RADIUS - BALL_RADIUS) * (PADDLE_RADIUS - BALL_RADIUS)) {
-        game->ball_pos.x = SCREEN_WIDTH / 2;
-        game->ball_pos.y = SCREEN_HEIGHT / 2;
+        game->ball_pos_x = SCREEN_WIDTH / 2;
+        game->ball_pos_y = SCREEN_HEIGHT / 2;
 
         return true;
     }
@@ -324,6 +325,7 @@ void handle_interrupt(unsigned cause) {
         //Calculates next frame
         move_paddles(&gamestate);
         move_ball(&gamestate);
+
         handle_collisions(&gamestate);
 
         //Draws next frame
