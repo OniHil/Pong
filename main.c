@@ -193,6 +193,14 @@ void draw_screen(Game game)
     // draw_score(game.score);
 }
 
+void clear_screen(Game game) {
+    game.p_one.color = C_BLACK;
+    game.p_two.color = C_BLACK;
+    draw_paddle(game.p_one);
+    draw_paddle(game.p_two);
+    draw_circle(game.ball_pos_x, game.ball_pos_y, BALL_RADIUS, C_BLACK);
+}
+
 int get_switches(void)
 {
     volatile int *p = (int *)0x04000010;
