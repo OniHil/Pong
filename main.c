@@ -1,4 +1,8 @@
 #include <stdbool.h>
+
+extern void print(const char*);
+extern void enable_interrupt(void);
+
 extern float sin[360];
 extern float cos[360];
 
@@ -41,11 +45,21 @@ typedef struct
     int score[2]; // 0: player one, 1: player two
 
     Point ball_pos;
-    Point ball_vel;
+    float ball_vel_x;
+    float ball_vel_y;
 
     Paddle p_one;
     Paddle p_two;
 } Game;
+
+Game gamestate;
+
+void setup_timer() {
+    int* timer_p = (int*) 0x04000020;
+    *(timer_p + 3) = 0x2D; // Periodh
+    *(timer_p + 2) = 0xC6C0; // Periodl
+    *(timer_p + 1) = 0x7;  // Control
+}
 
 Game init()
 {
@@ -77,11 +91,14 @@ Game init()
     
     game.ball_pos.x = SCREEN_WIDTH / 2;
     game.ball_pos.y = SCREEN_HEIGHT / 2;
-    game.ball_vel.x = 1;
-    game.ball_vel.y = 0;
+    game.ball_vel_x = 1;
+    game.ball_vel_y = 0;
 
     game.p_one = p1;
     game.p_two = p2;
+
+    setup_timer();
+    enable_interrupt();
 
     return game;
 }
@@ -195,7 +212,7 @@ void move_paddles(Game* game)
     // sw0 = (PADDLE_MOVEMENT_SPEED & sw0) | (-PADDLE_MOVEMENT_SPEED & ~sw0);
     // sw9 = (PADDLE_MOVEMENT_SPEED & sw9) | (-PADDLE_MOVEMENT_SPEED & ~sw9);
 
-    
+
     game->p_one.angle += sw0 * PADDLE_MOVEMENT_SPEED;
     game->p_one.angle %= 360;
     
@@ -223,8 +240,8 @@ void move_paddles(Game* game)
 
 void move_ball(Game* game)
 {
-    game->ball_pos.x += game->ball_vel.x;
-    game->ball_pos.y += game->ball_vel.y;
+    game->ball_pos.x += game->ball_vel_x;
+    game->ball_pos.y += game->ball_vel_y;
 }
 
 bool handle_paddle_collision(Game* game, Paddle player)
@@ -258,12 +275,12 @@ bool handle_paddle_collision(Game* game, Paddle player)
         float nx = -cos[player.angle];
         float ny = -sin[player.angle];
 
-        int velx = game->ball_vel.x;
-        int vely = game->ball_vel.y;
+        float velx = game->ball_vel_x;
+        float vely = game->ball_vel_y;
 
         float c = (float) velx * nx + (float) vely * ny;
-        game->ball_vel.x = velx - 2 * c * nx;
-        game->ball_vel.y = vely - 2 * c * ny;
+        game->ball_vel_x = velx - 2 * c * nx;
+        game->ball_vel_y = vely - 2 * c * ny;
 
         return true;
     }
@@ -290,28 +307,47 @@ void handle_collisions(Game* game) {
     handle_oob_collision(game);
 }
 
+void handle_interrupt(unsigned cause) {
+  switch (cause) {
+    case 16: 
+        //Clears previous frame
+        clear_screen(gamestate);
+        
+        //Calculates next frame
+        move_paddles(&gamestate);
+        move_ball(&gamestate);
+        handle_collisions(&gamestate);
+
+        //Draws next frame
+        draw_screen(gamestate);
+        
+        print("interrupt!");
+
+        int* timer_p = (int*) 0x04000020;
+        *timer_p = 0;
+        break;
+  }
+}
+
 int main()
 {
-    Game state = init();
+    gamestate = init();
 
-    draw_screen(state);
+    // draw_screen(state);
     while (1)
     {
+        
         // Wait and draw new state
-        tick();
-        draw_screen(state);
-
-        // Reset drawings
-        // draw_circle(state.ball_pos.x, state.ball_pos.y, BALL_RADIUS, C_BLACK);
-        // state.p_one.color = C_BLACK;
-        // state.p_two.color = C_BLACK;
-        // draw_paddle(state.p_one);
-        // draw_paddle(state.p_two);
-
+        // tick();
+        
+        
+        
         // Calculate new state
-        move_paddles(&state);
-        move_ball(&state);
-        handle_collisions(&state);
+        // move_paddles(&state);
+        // move_ball(&state);
+        // handle_collisions(&state);
+        
+        // draw_screen(state);
     }
 
     return 0;

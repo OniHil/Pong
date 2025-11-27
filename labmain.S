@@ -7,10 +7,10 @@
 # that you wrote in the other files here.                                            #
 ######################################################################################
 
-.globl handle_interrupt
-.text
+# .globl handle_interrupt
+# .text
 
-# Below is unused in lab1
-handle_interrupt:
-    jr ra
+# # Below is unused in lab1
+# handle_interrupt:
+#     jr ra
 	
