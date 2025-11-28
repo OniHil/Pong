@@ -13,7 +13,7 @@ extern float cos[360];
 
 #define BALL_RADIUS 2
 #define HIT_COOLDOWN 10
-#define BALL_SPEED 1
+#define BALL_SPEED 2
 
 #define PADDLE_RADIUS SCREEN_HEIGHT / 2 - 5
 #define PADDLE_WIDTH_DEG 30
@@ -230,10 +230,10 @@ void move_paddles(Game* game)
 
 
     game->p_one.angle += sw0 * PADDLE_MOVEMENT_SPEED;
-    game->p_one.angle %= 360;
+    game->p_one.angle = (game->p_one.angle % 360 + 360) % 360;
     
     game->p_two.angle += sw9 * PADDLE_MOVEMENT_SPEED;
-    game->p_two.angle %= 360;
+    game->p_two.angle = (game->p_two.angle % 360 + 360) % 360;
     
     // game->p_one.angle += 1;
     int p1d1 = ((game->p_one.angle + PADDLE_WIDTH_DEG / 2) % 360 + 360) % 360;
@@ -285,18 +285,14 @@ bool handle_paddle_collision(Game* game, Paddle player)
     float dist = vx * vx + vy * vy;
     
     // Collision detected if nearest point is within ball radius and on paddle
-    if (dist <= BALL_RADIUS * BALL_RADIUS && k >= 0 && k <= 1) {
+    if (dist <= BALL_RADIUS * BALL_RADIUS) {
         // Update ball trajectory by projecting the velocity of the ball onto
         // the normal of the paddle and subtracting the resulting vector twice
         float nx = -cos[player.angle];
         float ny = -sin[player.angle];
 
-        float velx = game->ball_vel_x;
-        float vely = game->ball_vel_y;
-
-        float c = velx * nx + vely * ny;
-        game->ball_vel_x = velx - 2 * c * nx;
-        game->ball_vel_y = vely - 2 * c * ny;
+        game->ball_vel_x += 2 * BALL_SPEED * nx;
+        game->ball_vel_y += 2 * BALL_SPEED * ny;
 
         return true;
     }
@@ -322,8 +318,8 @@ void handle_collisions(Game* game) {
         if (handle_paddle_collision(game, game->p_one) || handle_paddle_collision(game, game->p_two)) {
             game->hit_cooldown = HIT_COOLDOWN;
         } else {
-    handle_oob_collision(game);
-}
+            handle_oob_collision(game);
+        }
     } else {
         game->hit_cooldown -= 1;
     }
