@@ -291,8 +291,10 @@ bool handle_paddle_collision(Game* game, Paddle player)
         float nx = -cos[player.angle];
         float ny = -sin[player.angle];
 
-        game->ball_vel_x += 2 * BALL_SPEED * nx;
-        game->ball_vel_y += 2 * BALL_SPEED * ny;
+        float c = game->ball_vel_x * nx + game->ball_vel_y * ny;
+
+        game->ball_vel_x -= 2 * c * nx;
+        game->ball_vel_y -= 2 * c * ny;
 
         return true;
     }
