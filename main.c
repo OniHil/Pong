@@ -21,6 +21,19 @@ extern float cos[360];
 #define PADDLE_DIST_FROM_MIDDLE 110
 #define PADDLE_MOVEMENT_SPEED 2
 
+#define SEGMENT_DISPLAY ((volatile int *)0x04000020)
+const unsigned char digits[10] = {
+    0b00111111,
+    0b00000110,
+    0b01011011,
+    0b01001111,
+    0b01100110,
+    0b01101101,
+    0b01111101,
+    0b00000111,
+    0b01111111,
+    0b01101111};
+
 #define C_BLACK 0
 #define C_WHITE -1
 #define C_GRAY 0b00100101
@@ -65,95 +78,7 @@ void setup_timer()
     int *timer_p = (int *)0x04000020;
     *(timer_p + 3) = 0xF;    // Periodh
     *(timer_p + 2) = 0x4240; // Periodl
-    *(timer_p + 1) = 0x7;  // Control
-}
-
-    *(timer_p + 1) = 0x7;  // Control
-}
-
-Game init()
-{
-    base_paddle[0].x = PADDLE_RADIUS * cos[PADDLE_WIDTH_DEG / 2],
-    base_paddle[0].y = PADDLE_RADIUS * sin[PADDLE_WIDTH_DEG / 2];
-    base_paddle[1].x = PADDLE_RADIUS * cos[PADDLE_WIDTH_DEG / 2],
-    base_paddle[1].y = PADDLE_RADIUS * -sin[PADDLE_WIDTH_DEG / 2];
-
-    Paddle p1;
-    p1.angle = 0;
-    p1.color = C_BLUE;
-    p1.ends[0].x = (PADDLE_RADIUS) * cos[PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
-    p1.ends[0].y = (PADDLE_RADIUS) * sin[PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
-    p1.ends[1].x = (PADDLE_RADIUS) * cos[360 - PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
-    p1.ends[1].y = (PADDLE_RADIUS) * sin[360 - PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
-    
-    Paddle p2;
-    p2.angle = 180;
-    p2.color = C_RED;
-    p2.ends[0].x = (PADDLE_RADIUS) * cos[p2.angle + PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
-    p2.ends[0].y = (PADDLE_RADIUS) * sin[p2.angle + PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
-    p2.ends[1].x = (PADDLE_RADIUS) * cos[p2.angle - PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
-    p2.ends[1].y = (PADDLE_RADIUS) * sin[p2.angle - PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
-
-    Game game;
-    
-    game.score[0] = 0;
-    game.score[1] = 0;
-    
-    game.ball_pos_x = SCREEN_WIDTH / 2;
-    game.ball_pos_y = SCREEN_HEIGHT / 2;
-    game.ball_vel_x = BALL_SPEED;
-    game.ball_vel_y = 0;
-
-    game.hit_cooldown = HIT_COOLDOWN;
-
-    game.p_one = p1;
-    game.p_two = p2;
-
-    setup_timer();
-    enable_interrupt();
-
-    return game;
-{
-    base_paddle[0].x = PADDLE_RADIUS * cos[PADDLE_WIDTH_DEG / 2],
-    base_paddle[0].y = PADDLE_RADIUS * sin[PADDLE_WIDTH_DEG / 2];
-    base_paddle[1].x = PADDLE_RADIUS * cos[PADDLE_WIDTH_DEG / 2],
-    base_paddle[1].y = PADDLE_RADIUS * -sin[PADDLE_WIDTH_DEG / 2];
-
-    Paddle p1;
-    p1.angle = 0;
-    p1.color = C_BLUE;
-    p1.ends[0].x = (PADDLE_RADIUS) * cos[PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
-    p1.ends[0].y = (PADDLE_RADIUS) * sin[PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
-    p1.ends[1].x = (PADDLE_RADIUS) * cos[360 - PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
-    p1.ends[1].y = (PADDLE_RADIUS) * sin[360 - PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
-    
-    Paddle p2;
-    p2.angle = 180;
-    p2.color = C_RED;
-    p2.ends[0].x = (PADDLE_RADIUS) * cos[p2.angle + PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
-    p2.ends[0].y = (PADDLE_RADIUS) * sin[p2.angle + PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
-    p2.ends[1].x = (PADDLE_RADIUS) * cos[p2.angle - PADDLE_WIDTH_DEG / 2] + SCREEN_WIDTH / 2;
-    p2.ends[1].y = (PADDLE_RADIUS) * sin[p2.angle - PADDLE_WIDTH_DEG / 2] + SCREEN_HEIGHT / 2;
-
-    Game game;
-    
-    game.score[0] = 0;
-    game.score[1] = 0;
-    
-    game.ball_pos_x = SCREEN_WIDTH / 2;
-    game.ball_pos_y = SCREEN_HEIGHT / 2;
-    game.ball_vel_x = BALL_SPEED;
-    game.ball_vel_y = 0;
-
-    game.hit_cooldown = HIT_COOLDOWN;
-
-    game.p_one = p1;
-    game.p_two = p2;
-
-    setup_timer();
-    enable_interrupt();
-
-    return game;
+    *(timer_p + 1) = 0x7;    // Control
 }
 
 void tick()
@@ -237,6 +162,8 @@ void draw_circle(int x, int y, int radius, int color)
 
 void draw_score(int score[2])
 {
+    SEGMENT_DISPLAY[2] = digits[score[0] % 10];
+    SEGMENT_DISPLAY[3] = 0b10000000 | digits[score[1] % 10];
 }
 
 void draw_screen(Game game)
@@ -357,6 +284,11 @@ bool handle_oob_collision(Game *game)
     {
         game->ball_pos_x = SCREEN_WIDTH / 2;
         game->ball_pos_y = SCREEN_HEIGHT / 2;
+
+        game->score[0] += game->last_touch == 0;
+        game->score[1] += game->last_touch == 1;
+
+        draw_score(game->score);
 
         return true;
     }
