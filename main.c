@@ -20,7 +20,7 @@ extern float cos[360];
 #define PADDLE_DIST_FROM_MIDDLE 110
 #define PADDLE_MOVEMENT_SPEED 2
 
-#define SEGMENT_DISPLAY ((volatile int *)0x04000020)
+#define SEGMENT_DISPLAY ((volatile int *)0x04000050)
 const unsigned char digits[10] = {
     0b11000000,
     0b11111001,
