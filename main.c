@@ -1,7 +1,7 @@
 #include <stdbool.h>
 
 extern void print(const char *);
-extern void enable_interrupt(void);
+extern void print_dec(unsigned int);
 
 extern float sin[360];
 extern float cos[360];
@@ -78,6 +78,24 @@ typedef struct
 
 Game gamestate;
 
+typedef struct
+{
+    unsigned int mcycle;
+    unsigned int minstret;
+    unsigned int meminst;
+    unsigned int icmiss;
+    unsigned int dcmiss;
+    unsigned int icstal;
+    unsigned int dcstal;
+    unsigned int dhstal;
+    unsigned int alustal;
+
+    unsigned int le;
+    unsigned int mem;
+    unsigned int dsp;
+
+} Perf;
+
 void setup_timer()
 {
     int *timer_p = (int *)0x04000020;
@@ -86,8 +104,41 @@ void setup_timer()
     *(timer_p + 1) = 0x7;    // Control
 }
 
-void tick()
+Perf capture_perf()
 {
+    Perf perf;
+    asm volatile("csrr %0, mcycle" : "=r"(perf.mcycle));
+    asm volatile("csrr %0, minstret" : "=r"(perf.minstret));
+    // asm volatile("csrr %0, mhpmcounter3" : "=r"(perf.meminst));
+    // asm volatile("csrr %0, mhpmcounter4" : "=r"(perf.icmiss));
+    // asm volatile("csrr %0, mhpmcounter5" : "=r"(perf.dcmiss));
+    // asm volatile("csrr %0, mhpmcounter6" : "=r"(perf.icstal));
+    // asm volatile("csrr %0, mhpmcounter7" : "=r"(perf.dcstal));
+    // asm volatile("csrr %0, mhpmcounter8" : "=r"(perf.dhstal));
+    // asm volatile("csrr %0, mhpmcounter9" : "=r"(perf.alustal));
+
+    return perf;
+}
+
+void print_perf(Perf start, Perf end)
+{
+    unsigned int mcycle = end.mcycle - start.mcycle;
+    unsigned int minstret = end.minstret - start.minstret;
+    // unsigned int meminst = end.meminst - start.meminst;
+    // unsigned int icmiss = end.icmiss - start.icmiss;
+    // unsigned int dcmiss = end.dcmiss - start.dcmiss;
+    // unsigned int icstal = end.icstal - start.icstal;
+    // unsigned int dcstal = end.dcstal - start.dcstal;
+    // unsigned int dhstal = end.dhstal - start.dhstal;
+    // unsigned int alustal = end.alustal - start.alustal;
+
+    float ipc = (float)minstret / mcycle;
+
+    print("IPC: ");
+    print_dec(ipc);
+    print("\n");
+}
+
 void enable_interrupt(void)
 {
     asm volatile("csrsi mstatus, 3 ");
@@ -394,6 +445,12 @@ Game init()
 int main()
 {
     gamestate = init();
+
+    // Perf start = capture_perf();
+    // handle_interrupt(16);
+    // Perf end = capture_perf();
+    // print_perf(start, end);
+
     while (1)
     {
     }
