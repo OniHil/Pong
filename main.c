@@ -162,8 +162,8 @@ void draw_circle(int x, int y, int radius, int color)
 
 void draw_score(int score[2])
 {
-    SEGMENT_DISPLAY[2] = digits[score[0] % 10];
-    SEGMENT_DISPLAY[3] = 0b10000000 | digits[score[1] % 10];
+    SEGMENT_DISPLAY[0] = digits[score[0] % 10];
+    SEGMENT_DISPLAY[20] = digits[score[1] % 10];
 }
 
 void draw_screen(Game *game)
@@ -361,10 +361,15 @@ Game init()
     game.p_one = p1;
     game.p_two = p2;
 
-    for (int i = 0; i < 6; i++)
-    {
-        SEGMENT_DISPLAY[i] = 0;
-    }
+    // for (int i = 0; i < 6; i++)
+    // {
+    //     SEGMENT_DISPLAY[4 * i] = 0b11111111;
+    // }
+
+    SEGMENT_DISPLAY[4] = 0b11111111;
+    SEGMENT_DISPLAY[8] = 0b10111111;
+    SEGMENT_DISPLAY[12] = 0b10111111;
+    SEGMENT_DISPLAY[16] = 0b11111111;
 
     move_paddles(&game);
     draw_score(game.score);
