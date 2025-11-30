@@ -19,6 +19,7 @@
 # Libraries
 *.lib
 *.a
+!softfloat.a
 *.la
 *.lo
 
