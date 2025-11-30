@@ -56,18 +56,24 @@ typedef struct
 
 typedef struct
 {
+    float pos_x;
+    float pos_y;
+    float vel_x;
+    float vel_y;
+    int color;
+
+} Ball;
+
+typedef struct
+{
     int score[2];   // 0: player one, 1: player two
     int last_touch; // 0: player one, 1: player two
 
-    float ball_pos_x;
-    float ball_pos_y;
-    float ball_vel_x;
-    float ball_vel_y;
-
+    
     int hit_cooldown;
 
-    Paddle p_one;
-    Paddle p_two;
+    Ball ball;
+    Paddle paddles[2];
 
 } Game;
 
@@ -169,20 +175,20 @@ void draw_score(int score[2])
 void draw_screen(Game *game)
 {
     draw_circle(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, PADDLE_RADIUS, C_WHITE);
-    game->p_one.color = C_BLUE;
-    game->p_two.color = C_RED;
-    draw_paddle(game->p_one);
-    draw_paddle(game->p_two);
-    draw_circle(game->ball_pos_x, game->ball_pos_y, BALL_RADIUS, C_WHITE);
+    game->paddles[0].color = C_BLUE;
+    game->paddles[1].color = C_RED;
+    draw_paddle(game->paddles[0]);
+    draw_paddle(game->paddles[1]);
+    draw_circle(game->ball.pos_x, game->ball.pos_y, BALL_RADIUS, game->ball.color);
 }
 
-void clear_screen(Game *game)
+void clear_screen(Game game)
 {
-    game->p_one.color = C_BLACK;
-    game->p_two.color = C_BLACK;
-    draw_paddle(game->p_one);
-    draw_paddle(game->p_two);
-    draw_circle(game->ball_pos_x, game->ball_pos_y, BALL_RADIUS, C_BLACK);
+    game.paddles[0].color = C_BLACK;
+    game.paddles[1].color = C_BLACK;
+    draw_paddle(game.paddles[0]);
+    draw_paddle(game.paddles[1]);
+    draw_circle(game.ball.pos_x, game.ball.pos_y, BALL_RADIUS, C_BLACK);
 }
 
 int get_switches(void)
@@ -214,14 +220,14 @@ void move_paddles(Game *game)
     sw0 = sw0 == 0 ? -1 : 1;
     sw9 = sw9 == 0 ? -1 : 1;
 
-    update_paddle_ends(sw0, &game->p_one);
-    update_paddle_ends(sw9, &game->p_two);
+    update_paddle_ends(sw0, &game->paddles[0]);
+    update_paddle_ends(sw9, &game->paddles[1]);
 }
 
 void move_ball(Game *game)
 {
-    game->ball_pos_x += game->ball_vel_x;
-    game->ball_pos_y += game->ball_vel_y;
+    game->ball.pos_x += game->ball.vel_x;
+    game->ball.pos_y += game->ball.vel_y;
 }
 
 bool handle_paddle_collision(Game *game, Paddle player)
@@ -232,8 +238,8 @@ bool handle_paddle_collision(Game *game, Paddle player)
     float py2 = player.ends[1].y;
 
     // Vector from paddle end to ball
-    float ax = game->ball_pos_x - px1;
-    float ay = game->ball_pos_y - py1;
+    float ax = game->ball.pos_x - px1;
+    float ay = game->ball.pos_y - py1;
 
     float bx = px2 - px1;
     float by = py2 - py1;
@@ -244,8 +250,8 @@ bool handle_paddle_collision(Game *game, Paddle player)
     float nearestx = px1 + k * bx;
     float nearesty = py1 + k * by;
 
-    float vx = game->ball_pos_x - nearestx;
-    float vy = game->ball_pos_y - nearesty;
+    float vx = game->ball.pos_x - nearestx;
+    float vy = game->ball.pos_y - nearesty;
     float dist = vx * vx + vy * vy;
 
     // Collision detected if nearest point is within ball radius and on paddle
@@ -256,10 +262,12 @@ bool handle_paddle_collision(Game *game, Paddle player)
         float nx = -cos[player.angle];
         float ny = -sin[player.angle];
 
-        float c = game->ball_vel_x * nx + game->ball_vel_y * ny;
+        float c = game->ball.vel_x * nx + game->ball.vel_y * ny;
 
-        game->ball_vel_x -= 2 * c * nx * SPEED_MULT;
-        game->ball_vel_y -= 2 * c * ny * SPEED_MULT;
+        game->ball.vel_x -= 2 * c * nx * SPEED_MULT;
+        game->ball.vel_y -= 2 * c * ny * SPEED_MULT;
+
+        game->ball.color = player.color;
 
         return true;
     }
@@ -269,20 +277,23 @@ bool handle_paddle_collision(Game *game, Paddle player)
 
 bool handle_oob_collision(Game *game)
 {
-    int bx = game->ball_pos_x - SCREEN_WIDTH / 2;
-    int by = game->ball_pos_y - SCREEN_HEIGHT / 2;
+    int bx = game->ball.pos_x - SCREEN_WIDTH / 2;
+    int by = game->ball.pos_y - SCREEN_HEIGHT / 2;
 
     if (bx * bx + by * by >= (PADDLE_RADIUS - BALL_RADIUS) * (PADDLE_RADIUS - BALL_RADIUS))
     {
-        game->ball_pos_x = SCREEN_WIDTH / 2;
-        game->ball_pos_y = SCREEN_HEIGHT / 2;
+        game->ball.pos_x = SCREEN_WIDTH / 2;
+        game->ball.pos_y = SCREEN_HEIGHT / 2;
 
-        game->ball_vel_x = cos[game->p_one.angle] * BALL_SPEED;
-        game->ball_vel_y = sin[game->p_one.angle] * BALL_SPEED;
+        int target_player = game->last_touch * -1 + 1;
+
+        game->ball.vel_x = cos[game->paddles[target_player].angle] * BALL_SPEED;
+        game->ball.vel_y = sin[game->paddles[target_player].angle] * BALL_SPEED;
 
         game->score[0] += game->last_touch == 0;
         game->score[1] += game->last_touch == 1;
 
+        game->ball.color = game->paddles[game->last_touch].color;
         draw_score(game->score);
 
         return true;
@@ -294,11 +305,11 @@ void handle_collisions(Game *game)
 {
     if (game->hit_cooldown == 0)
     {
-        if (handle_paddle_collision(game, game->p_one)) {
+        if (handle_paddle_collision(game, game->paddles[0])) {
             game->last_touch = 0;
             game->hit_cooldown = HIT_COOLDOWN;
         }
-        else if (handle_paddle_collision(game, game->p_two)) {
+        else if (handle_paddle_collision(game, game->paddles[1])) {
             game->last_touch = 1;
             game->hit_cooldown = HIT_COOLDOWN;
         }
@@ -319,7 +330,7 @@ void handle_interrupt(unsigned cause)
     {
     case 16:
         // Clears previous frame
-        clear_screen(&gamestate);
+        clear_screen(gamestate);
 
         // Calculates next frame
         move_paddles(&gamestate);
@@ -351,15 +362,15 @@ Game init()
     game.score[0] = 0;
     game.score[1] = 0;
 
-    game.ball_pos_x = SCREEN_WIDTH / 2;
-    game.ball_pos_y = SCREEN_HEIGHT / 2;
-    game.ball_vel_x = BALL_SPEED;
-    game.ball_vel_y = 0;
-
-    game.hit_cooldown = HIT_COOLDOWN;
-
-    game.p_one = p1;
-    game.p_two = p2;
+    game.ball.pos_x = SCREEN_WIDTH / 2;
+    game.ball.pos_y = SCREEN_HEIGHT / 2;
+    game.ball.vel_x = BALL_SPEED;
+    game.ball.vel_y = 0;
+    
+    game.paddles[0] = p1;
+    game.paddles[1] = p2;
+    
+    game.ball.color = game.paddles[1].color;
 
     // for (int i = 0; i < 6; i++)
     // {
