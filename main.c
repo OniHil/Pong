@@ -88,8 +88,10 @@ void setup_timer()
 
 void tick()
 {
-    // Set timer
-    // Wait interrupt
+void enable_interrupt(void)
+{
+    asm volatile("csrsi mstatus, 3 ");
+    asm volatile("csrsi mie, 16");
 }
 
 void draw(int x, int y, int color)
