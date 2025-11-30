@@ -192,7 +192,7 @@ int get_switches(void)
 
 void update_paddle_ends(int dir, Paddle *paddle)
 {
-    paddle->angle += dir * PADDLE_MOVEMENT_SPEED;
+    paddle->angle = ((paddle->angle + dir * PADDLE_MOVEMENT_SPEED)  % 360 + 360) % 360;
 
     int paddle_end_1 = ((paddle->angle + PADDLE_WIDTH_DEG / 2) % 360 + 360) % 360;
     int paddle_end_2 = ((paddle->angle - PADDLE_WIDTH_DEG / 2) % 360 + 360) % 360;
