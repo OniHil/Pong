@@ -37,8 +37,8 @@ const unsigned char digits[10] = {
 #define C_BLACK 0
 #define C_WHITE -1
 #define C_GRAY 0b00100101
-#define C_RED 0b11100000
-#define C_BLUE 0b00000111
+#define C_P1 0b00000111
+#define C_P2 0b11100000
 
 typedef struct
 {
@@ -69,7 +69,6 @@ typedef struct
     int score[2];   // 0: player one, 1: player two
     int last_touch; // 0: player one, 1: player two
 
-    
     int hit_cooldown;
 
     Ball ball;
@@ -169,14 +168,16 @@ void draw_circle(int x, int y, int radius, int color)
 void draw_score(int score[2])
 {
     SEGMENT_DISPLAY[0] = digits[score[0] % 10];
-    SEGMENT_DISPLAY[20] = digits[score[1] % 10];
+    SEGMENT_DISPLAY[4] = digits[score[0] / 10];
+    SEGMENT_DISPLAY[16] = digits[score[1] % 10];
+    SEGMENT_DISPLAY[20] = digits[score[1] / 10];
 }
 
 void draw_screen(Game *game)
 {
+    game->paddles[0].color = C_P1;
     draw_circle(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, PADDLE_RADIUS, C_WHITE);
-    game->paddles[0].color = C_BLUE;
-    game->paddles[1].color = C_RED;
+    game->paddles[1].color = C_P2;
     draw_paddle(game->paddles[0]);
     draw_paddle(game->paddles[1]);
     draw_circle(game->ball.pos_x, game->ball.pos_y, BALL_RADIUS, game->ball.color);
@@ -199,7 +200,7 @@ int get_switches(void)
 
 void update_paddle_ends(int dir, Paddle *paddle)
 {
-    paddle->angle = ((paddle->angle + dir * PADDLE_MOVEMENT_SPEED)  % 360 + 360) % 360;
+    paddle->angle = ((paddle->angle + dir * PADDLE_MOVEMENT_SPEED) % 360 + 360) % 360;
 
     int paddle_end_1 = ((paddle->angle + PADDLE_WIDTH_DEG / 2) % 360 + 360) % 360;
     int paddle_end_2 = ((paddle->angle - PADDLE_WIDTH_DEG / 2) % 360 + 360) % 360;
@@ -305,12 +306,9 @@ void handle_collisions(Game *game)
 {
     if (game->hit_cooldown == 0)
     {
-        if (handle_paddle_collision(game, game->paddles[0])) {
-            game->last_touch = 0;
-            game->hit_cooldown = HIT_COOLDOWN;
-        }
-        else if (handle_paddle_collision(game, game->paddles[1])) {
-            game->last_touch = 1;
+        if (handle_paddle_collision(game, game->paddles[!game->last_touch]))
+        {
+            game->last_touch = !game->last_touch;
             game->hit_cooldown = HIT_COOLDOWN;
         }
         else
@@ -350,12 +348,11 @@ void handle_interrupt(unsigned cause)
 Game init()
 {
     Paddle p1;
+    p1.color = C_P1;
     p1.angle = 0;
-    p1.color = C_BLUE;
-
     Paddle p2;
     p2.angle = 180;
-    p2.color = C_RED;
+    p2.color = C_P2;
 
     Game game;
 
@@ -366,11 +363,13 @@ Game init()
     game.ball.pos_y = SCREEN_HEIGHT / 2;
     game.ball.vel_x = BALL_SPEED;
     game.ball.vel_y = 0;
-    
+
     game.paddles[0] = p1;
     game.paddles[1] = p2;
-    
-    game.ball.color = game.paddles[1].color;
+
+    game.last_touch = 0;
+    game.hit_cooldown = HIT_COOLDOWN;
+    game.ball.color = game.paddles[game.last_touch].color;
 
     // for (int i = 0; i < 6; i++)
     // {
