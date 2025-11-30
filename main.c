@@ -14,6 +14,7 @@ extern float cos[360];
 #define BALL_RADIUS 2
 #define HIT_COOLDOWN 10
 #define BALL_SPEED 2
+#define SPEED_MULT 1.05
 
 #define PADDLE_RADIUS SCREEN_HEIGHT / 2 - 5
 #define PADDLE_WIDTH_DEG 30
@@ -257,8 +258,8 @@ bool handle_paddle_collision(Game *game, Paddle player)
 
         float c = game->ball_vel_x * nx + game->ball_vel_y * ny;
 
-        game->ball_vel_x -= 2 * c * nx;
-        game->ball_vel_y -= 2 * c * ny;
+        game->ball_vel_x -= 2 * c * nx * SPEED_MULT;
+        game->ball_vel_y -= 2 * c * ny * SPEED_MULT;
 
         return true;
     }
@@ -275,6 +276,9 @@ bool handle_oob_collision(Game *game)
     {
         game->ball_pos_x = SCREEN_WIDTH / 2;
         game->ball_pos_y = SCREEN_HEIGHT / 2;
+
+        game->ball_vel_x = cos[game->p_one.angle] * BALL_SPEED;
+        game->ball_vel_y = sin[game->p_one.angle] * BALL_SPEED;
 
         game->score[0] += game->last_touch == 0;
         game->score[1] += game->last_touch == 1;
