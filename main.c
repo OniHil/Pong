@@ -294,8 +294,12 @@ void handle_collisions(Game *game)
 {
     if (game->hit_cooldown == 0)
     {
-        if (handle_paddle_collision(game, game->p_one) || handle_paddle_collision(game, game->p_two))
-        {
+        if (handle_paddle_collision(game, game->p_one)) {
+            game->last_touch = 0;
+            game->hit_cooldown = HIT_COOLDOWN;
+        }
+        else if (handle_paddle_collision(game, game->p_two)) {
+            game->last_touch = 1;
             game->hit_cooldown = HIT_COOLDOWN;
         }
         else
