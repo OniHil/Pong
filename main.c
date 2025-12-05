@@ -16,7 +16,8 @@ extern float cos[360];
 #define BALL_SPEED 2
 #define SPEED_MULT 1.05
 
-#define PADDLE_RADIUS SCREEN_HEIGHT / 2 - 5
+int PADDLE_RADIUS = SCREEN_HEIGHT / 2 * 0.95;
+int GAME_RADIUS = SCREEN_HEIGHT / 2 * 0.99;
 #define PADDLE_WIDTH_DEG 30
 #define PADDLE_DIST_FROM_MIDDLE 110
 #define PADDLE_MOVEMENT_SPEED 2
@@ -174,6 +175,11 @@ void print_perf(Perf start, Perf end)
     float dcmiss_ratio = (float)mhpmcounter5 / mhpmcounter3;
     print("D-cache miss ratio: ");
     print_dec(dcmiss_ratio * 100);
+    print("%\n");
+
+    float dcstall_ratio = (float)mhpmcounter7 / mhpmcounter3;
+    print("D-cache stall ratio: ");
+    print_dec(dcstall_ratio * 100);
     print("%\n");
 
     float icmiss_ratio = (float)mhpmcounter4 / minstret;
@@ -336,7 +342,7 @@ inline void move_paddles(Game *game)
     int switches = get_switches();
 
     int sw0 = switches & 1;
-    int sw9 = switches & 0x100;
+    int sw9 = switches & 0x200;
     sw9 = sw9 >> 8;
 
     sw0 = sw0 == 0 ? -1 : 1;
@@ -505,7 +511,7 @@ Game init()
 
     move_paddles(&game);
     draw_score(game.score);
-    draw_circle(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, PADDLE_RADIUS, C_WHITE);
+    draw_circle(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, GAME_RADIUS, C_WHITE);
     // setup_timer();
     // enable_interrupt();
 
@@ -515,9 +521,10 @@ Game init()
 int main()
 {
     gamestate = init();
+    int i = 0;
 
     start = capture_perf();
-    for (int i = 0; i < 10000; i++)
+    for (; i < 1; i++)
     {
         handle_interrupt(16);
     }
