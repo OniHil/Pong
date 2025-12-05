@@ -21,6 +21,7 @@ extern float cos[360];
 #define PADDLE_DIST_FROM_MIDDLE 110
 #define PADDLE_MOVEMENT_SPEED 2
 
+#define VGA ((volatile char *)0x08000000)
 #define SEGMENT_DISPLAY ((volatile int *)0x04000050)
 const unsigned char digits[10] = {
     0b11000000,
@@ -82,13 +83,13 @@ typedef struct
 {
     unsigned int mcycle;
     unsigned int minstret;
-    unsigned int meminst;
-    unsigned int icmiss;
-    unsigned int dcmiss;
-    unsigned int icstal;
-    unsigned int dcstal;
-    unsigned int dhstal;
-    unsigned int alustal;
+    unsigned int mhpmcounter3;
+    unsigned int mhpmcounter4;
+    unsigned int mhpmcounter5;
+    unsigned int mhpmcounter6;
+    unsigned int mhpmcounter7;
+    unsigned int mhpmcounter8;
+    unsigned int mhpmcounter9;
 
     unsigned int le;
     unsigned int mem;
@@ -104,18 +105,21 @@ void setup_timer()
     *(timer_p + 1) = 0x7;    // Control
 }
 
+Perf start;
+Perf end;
+
 Perf capture_perf()
 {
     Perf perf;
     asm volatile("csrr %0, mcycle" : "=r"(perf.mcycle));
     asm volatile("csrr %0, minstret" : "=r"(perf.minstret));
-    // asm volatile("csrr %0, mhpmcounter3" : "=r"(perf.meminst));
-    // asm volatile("csrr %0, mhpmcounter4" : "=r"(perf.icmiss));
-    // asm volatile("csrr %0, mhpmcounter5" : "=r"(perf.dcmiss));
-    // asm volatile("csrr %0, mhpmcounter6" : "=r"(perf.icstal));
-    // asm volatile("csrr %0, mhpmcounter7" : "=r"(perf.dcstal));
-    // asm volatile("csrr %0, mhpmcounter8" : "=r"(perf.dhstal));
-    // asm volatile("csrr %0, mhpmcounter9" : "=r"(perf.alustal));
+    asm volatile("csrr %0, mhpmcounter3" : "=r"(perf.mhpmcounter3));
+    asm volatile("csrr %0, mhpmcounter4" : "=r"(perf.mhpmcounter4));
+    asm volatile("csrr %0, mhpmcounter5" : "=r"(perf.mhpmcounter5));
+    asm volatile("csrr %0, mhpmcounter6" : "=r"(perf.mhpmcounter6));
+    asm volatile("csrr %0, mhpmcounter7" : "=r"(perf.mhpmcounter7));
+    asm volatile("csrr %0, mhpmcounter8" : "=r"(perf.mhpmcounter8));
+    asm volatile("csrr %0, mhpmcounter9" : "=r"(perf.mhpmcounter9));
 
     return perf;
 }
@@ -124,34 +128,96 @@ void print_perf(Perf start, Perf end)
 {
     unsigned int mcycle = end.mcycle - start.mcycle;
     unsigned int minstret = end.minstret - start.minstret;
-    // unsigned int meminst = end.meminst - start.meminst;
-    // unsigned int icmiss = end.icmiss - start.icmiss;
-    // unsigned int dcmiss = end.dcmiss - start.dcmiss;
-    // unsigned int icstal = end.icstal - start.icstal;
-    // unsigned int dcstal = end.dcstal - start.dcstal;
-    // unsigned int dhstal = end.dhstal - start.dhstal;
-    // unsigned int alustal = end.alustal - start.alustal;
+    unsigned int mhpmcounter3 = end.mhpmcounter3 - start.mhpmcounter3; // Memory instruction
+    unsigned int mhpmcounter4 = end.mhpmcounter4 - start.mhpmcounter4; // I-cache miss
+    unsigned int mhpmcounter5 = end.mhpmcounter5 - start.mhpmcounter5; // D-cache miss
+    unsigned int mhpmcounter6 = end.mhpmcounter6 - start.mhpmcounter6; // I-cache stall
+    unsigned int mhpmcounter7 = end.mhpmcounter7 - start.mhpmcounter7; // D-cache stall
+    unsigned int mhpmcounter8 = end.mhpmcounter8 - start.mhpmcounter8; // Data hazard stall
+    unsigned int mhpmcounter9 = end.mhpmcounter9 - start.mhpmcounter9; // ALU stall
 
+    print("======== All numbers:\n");
+    print("Cycles: ");
+    print_dec(mcycle);
+    print("\n");
+    print("Instructions: ");
+    print_dec(minstret);
+    print("\n");
+    print("Memory instruction: ");
+    print_dec(mhpmcounter3);
+    print("\n");
+    print("I-cache miss: ");
+    print_dec(mhpmcounter4);
+    print("\n");
+    print("D-cache miss: ");
+    print_dec(mhpmcounter5);
+    print("\n");
+    print("I-cache stall: ");
+    print_dec(mhpmcounter6);
+    print("\n");
+    print("D-cache stall: ");
+    print_dec(mhpmcounter7);
+    print("\n");
+    print("Data hazard stall: ");
+    print_dec(mhpmcounter8);
+    print("\n");
+    print("ALU stall: ");
+    print_dec(mhpmcounter9);
+    print("\n");
+
+    print("======== Ratios:\n");
     float ipc = (float)minstret / mcycle;
+    print("IPC: 0.");
+    print_dec(ipc * 100);
+    print("\n");
 
-    print("IPC: ");
-    print_dec(ipc);
+    float dcmiss_ratio = (float)mhpmcounter5 / mhpmcounter3;
+    print("D-cache miss ratio: ");
+    print_dec(dcmiss_ratio * 100);
+    print("%\n");
+
+    float icmiss_ratio = (float)mhpmcounter4 / minstret;
+    print("I-cache miss ratio: ");
+    print_dec(icmiss_ratio * 100);
+    print("%\n");
+
+    float icstall_ratio = (float)mhpmcounter6 / minstret;
+    print("I-cache stall ratio: ");
+    print_dec(icstall_ratio * 100);
+    print("%\n");
+
+    float alu_stall_ratio = (float)mhpmcounter9 / mcycle;
+    print("ALU-stall ratio: ");
+    print_dec(alu_stall_ratio * 100);
+    print("%\n");
+
+    float mem_intens = (float)mhpmcounter3 / minstret;
+    print("Memory Intensity: ");
+    print_dec(mem_intens * 100);
+    print("%\n");
+
+    float hazard = (float)mhpmcounter8 / mcycle;
+    print("Hazard-stall ratio: ");
+    print_dec(hazard * 100);
+    print("%\n");
+
+    print("Cache misses: ");
+    print_dec(mhpmcounter4 + mhpmcounter5);
     print("\n");
 }
 
-void enable_interrupt(void)
+inline void enable_interrupt(void)
 {
     asm volatile("csrsi mstatus, 3 ");
     asm volatile("csrsi mie, 16");
 }
 
-void draw(int x, int y, int color)
+inline void draw(int x, int y, int color)
 {
-    volatile char *VGA = (volatile char *)0x08000000;
     VGA[x + y * SCREEN_WIDTH] = color;
 }
 
-void draw_paddle(Paddle paddle)
+inline void draw_paddle(Paddle paddle)
 {
     // Bresenham's line algo https://en.wikipedia.org/wiki/Bresenham's_line_algorithm
     int x0 = paddle.ends[0].x;
@@ -188,10 +254,11 @@ void draw_paddle(Paddle paddle)
     }
 }
 
-void draw_circle(int x, int y, int radius, int color)
+inline void draw_circle(int x, int y, int radius, int color)
 {
     // Jesko's method variant of midpoint circle algorithm
-    int t1 = radius / 16;
+
+    int t1 = radius >> 4;
     int t2 = 0;
     int dx = radius;
     int dy = 0;
@@ -210,6 +277,7 @@ void draw_circle(int x, int y, int radius, int color)
         dy++;
         t1 = t1 + dy;
         t2 = t1 - dx;
+
         if (t2 >= 0)
         {
             t1 = t2;
@@ -218,7 +286,7 @@ void draw_circle(int x, int y, int radius, int color)
     }
 }
 
-void draw_score(int score[2])
+inline void draw_score(int score[2])
 {
     SEGMENT_DISPLAY[0] = digits[score[0] % 10];
     SEGMENT_DISPLAY[4] = digits[score[0] / 10];
@@ -226,17 +294,16 @@ void draw_score(int score[2])
     SEGMENT_DISPLAY[20] = digits[score[1] / 10];
 }
 
-void draw_screen(Game *game)
+inline void draw_screen(Game *game)
 {
     game->paddles[0].color = C_P1;
-    draw_circle(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, PADDLE_RADIUS, C_WHITE);
     game->paddles[1].color = C_P2;
     draw_paddle(game->paddles[0]);
     draw_paddle(game->paddles[1]);
     draw_circle(game->ball.pos_x, game->ball.pos_y, BALL_RADIUS, game->ball.color);
 }
 
-void clear_screen(Game game)
+inline void clear_screen(Game game)
 {
     game.paddles[0].color = C_BLACK;
     game.paddles[1].color = C_BLACK;
@@ -245,28 +312,29 @@ void clear_screen(Game game)
     draw_circle(game.ball.pos_x, game.ball.pos_y, BALL_RADIUS, C_BLACK);
 }
 
-int get_switches(void)
+inline int get_switches(void)
 {
     volatile int *p = (int *)0x04000010;
     return *p & 0b1111111111;
 }
 
-void update_paddle_ends(int dir, Paddle *paddle)
+inline void update_paddle_ends(int dir, Paddle *paddle)
 {
     paddle->angle = ((paddle->angle + dir * PADDLE_MOVEMENT_SPEED) % 360 + 360) % 360;
 
     int paddle_end_1 = ((paddle->angle + PADDLE_WIDTH_DEG / 2) % 360 + 360) % 360;
     int paddle_end_2 = ((paddle->angle - PADDLE_WIDTH_DEG / 2) % 360 + 360) % 360;
 
-    paddle->ends[0].x = (PADDLE_RADIUS)*cos[paddle_end_1] + (SCREEN_WIDTH) / 2;
-    paddle->ends[0].y = (PADDLE_RADIUS)*sin[paddle_end_1] + (SCREEN_HEIGHT) / 2;
-    paddle->ends[1].x = (PADDLE_RADIUS)*cos[paddle_end_2] + (SCREEN_WIDTH) / 2;
-    paddle->ends[1].y = (PADDLE_RADIUS)*sin[paddle_end_2] + (SCREEN_HEIGHT) / 2;
+    paddle->ends[0].x = ((PADDLE_RADIUS)*cos[paddle_end_1]) + (SCREEN_WIDTH) / 2;
+    paddle->ends[0].y = ((PADDLE_RADIUS)*sin[paddle_end_1]) + (SCREEN_HEIGHT) / 2;
+    paddle->ends[1].x = ((PADDLE_RADIUS)*cos[paddle_end_2]) + (SCREEN_WIDTH) / 2;
+    paddle->ends[1].y = ((PADDLE_RADIUS)*sin[paddle_end_2]) + (SCREEN_HEIGHT) / 2;
 }
 
-void move_paddles(Game *game)
+inline void move_paddles(Game *game)
 {
     int switches = get_switches();
+
     int sw0 = switches & 1;
     int sw9 = switches & 0x100;
     sw9 = sw9 >> 8;
@@ -278,13 +346,13 @@ void move_paddles(Game *game)
     update_paddle_ends(sw9, &game->paddles[1]);
 }
 
-void move_ball(Game *game)
+inline void move_ball(Game *game)
 {
     game->ball.pos_x += game->ball.vel_x;
     game->ball.pos_y += game->ball.vel_y;
 }
 
-bool handle_paddle_collision(Game *game, Paddle player)
+inline bool handle_paddle_collision(Game *game, Paddle player)
 {
     float px1 = player.ends[0].x;
     float py1 = player.ends[0].y;
@@ -329,13 +397,14 @@ bool handle_paddle_collision(Game *game, Paddle player)
     return false;
 }
 
-bool handle_oob_collision(Game *game)
+inline bool handle_oob_collision(Game *game)
 {
     int bx = game->ball.pos_x - SCREEN_WIDTH / 2;
     int by = game->ball.pos_y - SCREEN_HEIGHT / 2;
 
     if (bx * bx + by * by >= (PADDLE_RADIUS - BALL_RADIUS) * (PADDLE_RADIUS - BALL_RADIUS))
     {
+
         game->ball.pos_x = SCREEN_WIDTH / 2;
         game->ball.pos_y = SCREEN_HEIGHT / 2;
 
@@ -355,7 +424,7 @@ bool handle_oob_collision(Game *game)
     return false;
 }
 
-void handle_collisions(Game *game)
+inline void handle_collisions(Game *game)
 {
     if (game->hit_cooldown == 0)
     {
@@ -436,8 +505,9 @@ Game init()
 
     move_paddles(&game);
     draw_score(game.score);
-    setup_timer();
-    enable_interrupt();
+    draw_circle(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, PADDLE_RADIUS, C_WHITE);
+    // setup_timer();
+    // enable_interrupt();
 
     return game;
 }
@@ -446,10 +516,13 @@ int main()
 {
     gamestate = init();
 
-    // Perf start = capture_perf();
-    // handle_interrupt(16);
-    // Perf end = capture_perf();
-    // print_perf(start, end);
+    start = capture_perf();
+    for (int i = 0; i < 10000; i++)
+    {
+        handle_interrupt(16);
+    }
+    end = capture_perf();
+    print_perf(start, end);
 
     while (1)
     {
