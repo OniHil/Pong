@@ -223,6 +223,7 @@ inline void draw(int x, int y, short color)
     VGA[x + y * SCREEN_WIDTH] = color;
 }
 
+//Written by Mikael
 inline void draw_paddle(Paddle paddle)
 {
     // Bresenham's line algo https://en.wikipedia.org/wiki/Bresenham's_line_algorithm
@@ -260,6 +261,7 @@ inline void draw_paddle(Paddle paddle)
     }
 }
 
+// Written By Pontus
 inline void draw_circle(int x, int y, int radius, short color)
 {
     // Jesko's method variant of midpoint circle algorithm
@@ -292,6 +294,7 @@ inline void draw_circle(int x, int y, int radius, short color)
     }
 }
 
+// Written by Mikael
 inline void draw_score(int score[2])
 {
     SEGMENT_DISPLAY[0] = digits[score[0] % 10];
@@ -300,6 +303,7 @@ inline void draw_score(int score[2])
     SEGMENT_DISPLAY[20] = digits[score[1] / 10];
 }
 
+// Written by Mikael
 inline void draw_screen(Game *game)
 {
     game->paddles[0].color = C_P1;
@@ -309,6 +313,7 @@ inline void draw_screen(Game *game)
     draw_circle(game->ball.pos_x, game->ball.pos_y, BALL_RADIUS, game->ball.color);
 }
 
+//Written by Pontus
 inline void clear_screen(Game game)
 {
     game.paddles[0].color = C_BLACK;
@@ -324,6 +329,7 @@ inline int get_switches(void)
     return *p & 0b1111111111;
 }
 
+// Written by both
 inline void update_paddle_ends(int dir, Paddle *paddle)
 {
     paddle->angle = paddle->angle + dir * PADDLE_MOVEMENT_SPEED;
@@ -342,6 +348,7 @@ inline void update_paddle_ends(int dir, Paddle *paddle)
     paddle->ends[1].y = ((PADDLE_RADIUS)*sin[paddle_end_2]) + (SCREEN_HEIGHT) / 2;
 }
 
+// Written by both
 inline void move_paddles(Game *game)
 {
     int switches = get_switches();
@@ -363,6 +370,7 @@ inline void move_ball(Game *game)
     game->ball.pos_y += game->ball.vel_y;
 }
 
+// Written by Pontus
 inline bool handle_paddle_collision(Game *game, Paddle player)
 {
     float px1 = player.ends[0].x;
@@ -408,6 +416,7 @@ inline bool handle_paddle_collision(Game *game, Paddle player)
     return false;
 }
 
+// Written by Pontus
 inline bool handle_oob_collision(Game *game)
 {
     int bx = game->ball.pos_x - SCREEN_WIDTH / 2;
@@ -435,6 +444,7 @@ inline bool handle_oob_collision(Game *game)
     return false;
 }
 
+// Written by both
 inline void handle_collisions(Game *game)
 {
     if (game->hit_cooldown > 0)
@@ -484,6 +494,7 @@ void handle_interrupt(unsigned cause)
     }
 }
 
+// Written by both
 Game init()
 {
     Paddle p1;
