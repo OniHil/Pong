@@ -16,7 +16,7 @@ extern float cos[360];
 #define BALL_SPEED 2
 #define SPEED_MULT 1.05
 
-int PADDLE_RADIUS = SCREEN_HEIGHT / 2 * 0.95;
+int PADDLE_RADIUS = SCREEN_HEIGHT / 2 * 0.90;
 int GAME_RADIUS = SCREEN_HEIGHT / 2 * 0.99;
 #define PADDLE_WIDTH_DEG 30
 #define PADDLE_DIST_FROM_MIDDLE 110
@@ -62,7 +62,7 @@ typedef struct
     float pos_y;
     float vel_x;
     float vel_y;
-    int color;
+    short color;
 
 } Ball;
 
@@ -172,30 +172,30 @@ void print_perf(Perf start, Perf end)
     print_dec(ipc * 100);
     print("\n");
 
-    float dcmiss_ratio = (float)mhpmcounter5 / mhpmcounter3;
-    print("D-cache miss ratio: ");
-    print_dec(dcmiss_ratio * 100);
+    float dcmiss_rate = (float)mhpmcounter5 / mhpmcounter3;
+    print("D-cache miss rate: ");
+    print_dec(dcmiss_rate * 100);
     print("%\n");
 
     float dcstall_ratio = (float)mhpmcounter7 / mhpmcounter3;
-    print("D-cache stall ratio: ");
+    print("D-cache stall ratio: 0.");
     print_dec(dcstall_ratio * 100);
-    print("%\n");
+    print("\n");
 
-    float icmiss_ratio = (float)mhpmcounter4 / minstret;
-    print("I-cache miss ratio: ");
-    print_dec(icmiss_ratio * 100);
+    float icmiss_rate = (float)mhpmcounter4 / minstret;
+    print("I-cache miss rate: ");
+    print_dec(icmiss_rate * 100);
     print("%\n");
 
     float icstall_ratio = (float)mhpmcounter6 / minstret;
-    print("I-cache stall ratio: ");
+    print("I-cache stall ratio: 0.");
     print_dec(icstall_ratio * 100);
-    print("%\n");
+    print("\n");
 
     float alu_stall_ratio = (float)mhpmcounter9 / mcycle;
-    print("ALU-stall ratio: ");
+    print("ALU-stall ratio: 0.0"); // It's 0 so we need another 0 to pad it
     print_dec(alu_stall_ratio * 100);
-    print("%\n");
+    print("\n");
 
     float mem_intens = (float)mhpmcounter3 / minstret;
     print("Memory Intensity: ");
@@ -203,9 +203,9 @@ void print_perf(Perf start, Perf end)
     print("%\n");
 
     float hazard = (float)mhpmcounter8 / mcycle;
-    print("Hazard-stall ratio: ");
+    print("Hazard-stall ratio: 0.0"); // It's 0 (or close to) so we need another 0 to pad it
     print_dec(hazard * 100);
-    print("%\n");
+    print("\n");
 
     print("Cache misses: ");
     print_dec(mhpmcounter4 + mhpmcounter5);
@@ -218,7 +218,7 @@ inline void enable_interrupt(void)
     asm volatile("csrsi mie, 16");
 }
 
-inline void draw(int x, int y, int color)
+inline void draw(int x, int y, short color)
 {
     VGA[x + y * SCREEN_WIDTH] = color;
 }
@@ -260,7 +260,7 @@ inline void draw_paddle(Paddle paddle)
     }
 }
 
-inline void draw_circle(int x, int y, int radius, int color)
+inline void draw_circle(int x, int y, int radius, short color)
 {
     // Jesko's method variant of midpoint circle algorithm
 
@@ -326,10 +326,15 @@ inline int get_switches(void)
 
 inline void update_paddle_ends(int dir, Paddle *paddle)
 {
-    paddle->angle = ((paddle->angle + dir * PADDLE_MOVEMENT_SPEED) % 360 + 360) % 360;
+    paddle->angle = paddle->angle + dir * PADDLE_MOVEMENT_SPEED;
+    paddle->angle -= 360 * (paddle->angle >= 360);
+    paddle->angle += 360 * (paddle->angle < 0);
 
-    int paddle_end_1 = ((paddle->angle + PADDLE_WIDTH_DEG / 2) % 360 + 360) % 360;
-    int paddle_end_2 = ((paddle->angle - PADDLE_WIDTH_DEG / 2) % 360 + 360) % 360;
+    int paddle_end_1 = paddle->angle + PADDLE_WIDTH_DEG / 2;
+    paddle_end_1 -= 360 * (paddle_end_1 >= 360);
+
+    int paddle_end_2 = paddle->angle - PADDLE_WIDTH_DEG / 2;
+    paddle_end_2 += 360 * (paddle_end_2 < 0);
 
     paddle->ends[0].x = ((PADDLE_RADIUS)*cos[paddle_end_1]) + (SCREEN_WIDTH) / 2;
     paddle->ends[0].y = ((PADDLE_RADIUS)*sin[paddle_end_1]) + (SCREEN_HEIGHT) / 2;
@@ -432,21 +437,27 @@ inline bool handle_oob_collision(Game *game)
 
 inline void handle_collisions(Game *game)
 {
-    if (game->hit_cooldown == 0)
+    if (game->hit_cooldown > 0)
     {
-        if (handle_paddle_collision(game, game->paddles[!game->last_touch]))
-        {
-            game->last_touch = !game->last_touch;
-            game->hit_cooldown = HIT_COOLDOWN;
-        }
-        else
-        {
-            handle_oob_collision(game);
-        }
+        game->hit_cooldown -= 1;
+        return;
+    }
+
+    int dx = game->ball.pos_x - (SCREEN_WIDTH / 2);
+    int dy = game->ball.pos_y - (SCREEN_HEIGHT / 2);
+    int dist_sq = dx * dx + dy * dy;
+
+    if (dist_sq < (PADDLE_RADIUS - BALL_RADIUS - BALL_SPEED) * (PADDLE_RADIUS - BALL_RADIUS - BALL_SPEED))
+        return;
+
+    if (handle_paddle_collision(game, game->paddles[!game->last_touch]))
+    {
+        game->last_touch = !game->last_touch;
+        game->hit_cooldown = HIT_COOLDOWN;
     }
     else
     {
-        game->hit_cooldown -= 1;
+        handle_oob_collision(game);
     }
 }
 
@@ -495,14 +506,9 @@ Game init()
     game.paddles[0] = p1;
     game.paddles[1] = p2;
 
-    game.last_touch = 0;
+    game.last_touch = 1;
     game.hit_cooldown = HIT_COOLDOWN;
     game.ball.color = game.paddles[game.last_touch].color;
-
-    // for (int i = 0; i < 6; i++)
-    // {
-    //     SEGMENT_DISPLAY[4 * i] = 0b11111111;
-    // }
 
     SEGMENT_DISPLAY[4] = 0b11111111;
     SEGMENT_DISPLAY[8] = 0b10111111;
@@ -512,24 +518,28 @@ Game init()
     move_paddles(&game);
     draw_score(game.score);
     draw_circle(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, GAME_RADIUS, C_WHITE);
-    // setup_timer();
-    // enable_interrupt();
+    setup_timer();
+    enable_interrupt();
 
     return game;
 }
 
 int main()
 {
-    gamestate = init();
+
     int i = 0;
 
-    start = capture_perf();
-    for (; i < 1; i++)
-    {
-        handle_interrupt(16);
-    }
-    end = capture_perf();
-    print_perf(start, end);
+    // gamestate = init();
+    // i = 0;
+    // start = capture_perf();
+    // for (; i < 16; i++)
+    // {
+    //     handle_interrupt(16);
+    // }
+    // end = capture_perf();
+    // print_perf(start, end);
+
+    gamestate = init();
 
     while (1)
     {
